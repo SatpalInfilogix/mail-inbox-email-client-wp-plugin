@@ -79,6 +79,7 @@ export default {
                         received_datetime
                         to_recipients
                         sender
+                        has_attachments
                         additionalInfo {
                             tag_id
                             tag_name
@@ -402,9 +403,7 @@ export default {
             >
 
             <template v-slot:header.attachments="{ header }">
-                <v-icon small class="ml-2">
-                    mdi-paperclip
-                </v-icon>
+                <v-icon small>mdi-paperclip</v-icon>
             </template>
 
             <template v-slot:item="{ item }">
@@ -483,9 +482,7 @@ export default {
                     </td>
 
                     <td>
-                        <v-chip size="x-small" color="primary" text-color="white">
-                            {{ item.attachments ? item.attachments.length : 0 }}
-                        </v-chip>
+                        <v-icon small v-if="item.has_attachments" class="text-amber">mdi-paperclip</v-icon>
                     </td>
 
                     <td>
