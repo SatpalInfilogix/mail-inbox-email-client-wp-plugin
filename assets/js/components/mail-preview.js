@@ -14,34 +14,19 @@ export default {
     template: `
         <v-container fluid>
             <v-card class="mx-auto" max-width="800">
-            <!-- Header with Close Button -->
-            <v-toolbar dense flat>
-                <v-toolbar-title>Email Preview</v-toolbar-title>
-                <v-spacer></v-spacer>
-                <v-btn icon @click="closePreview">
-                <v-icon>mdi-close</v-icon>
-                </v-btn>
-            </v-toolbar>
-
-            <v-divider></v-divider>
-
             <!-- Email Content -->
-            <v-card-text style="overflow: auto; max-height: 70vh;">
+            <v-card-text style="overflow: auto; max-height: 80vh;">
+            
                 <!-- Email Headers -->
                 <div class="email-headers">
                 <!-- From -->
-                <p class="text-body-2 my-1">
-                    <span class="font-weight-bold">From:</span>
-                    <span v-if="email.from && JSON.parse(email.from).length">
-                    <span
-                        v-for="fromRecipient in JSON.parse(email.from)"
-                        :key="fromRecipient.emailAddress.address"
-                    >
-                        {{ fromRecipient.emailAddress.name }}
-                        &lt;{{ fromRecipient.emailAddress.address }}&gt;
-                    </span>
-                    </span>
-                </p>
+                <div class="d-flex justify-space-between">
+                            <p class="text-body-2 my-1" v-for="toRecipient in JSON.parse(email.to_recipients)">
+                                <span class="font-weight-bold">From:</span> 
+                                {{ toRecipient.emailAddress.name }}
+                            </p>
+                            <v-icon @click="closePreview" class="me-2">mdi-close</v-icon>
+                        </div>
 
                 <!-- To -->
                 <p class="text-body-2 my-1">

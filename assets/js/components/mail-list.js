@@ -56,6 +56,11 @@ export default {
             this.selectedEmailId = row.id;
             this.$emit('viewEmail', row.id);
         },
+        selectRow(row) {
+            this.tempSelectedEmail = row;
+            this.selectedEmailId = row.id;
+            this.$emit('viewEmailIfPreviewOpened', row.id);
+        },
         async loadEmails(offset = 0) {  
             if(offset === 0){
                 this.loading = false;
@@ -403,7 +408,7 @@ export default {
             </template>
 
             <template v-slot:item="{ item }">
-                <tr class="cursor-default" :class="{'bg-cyan-lighten-5': selectedEmailId === item.id, 'bg-amber-lighten-4' : tempSelectedEmail.id === item.id}" @click="tempSelectedEmail=item" @dblclick="onRowClick(item)">
+                <tr class="cursor-default" :class="{'bg-cyan-lighten-5': selectedEmailId === item.id, 'bg-amber-lighten-4' : tempSelectedEmail.id === item.id}" @click="selectRow(item)" @dblclick="onRowClick(item)">
                     <td>
                         <v-checkbox
                             v-model="item.selected"

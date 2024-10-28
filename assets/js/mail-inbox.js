@@ -101,6 +101,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     previewWidth: parseFloat(this.previewWidth),
                 });
             },
+            async viewEmailIfPreviewOpened(emailId){
+                if(this.showPreview){
+                    this.viewEmail(emailId);
+                }
+            },
             handleSelectedAccount(accountDetails){
                 this.account = accountDetails;
                 localStorage.setItem('mailInboxSelectedAccount', JSON.stringify(accountDetails));
@@ -284,7 +289,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                     :activeAccount="account" 
                                     :activeFolder="activeFolder" 
                                     :updatedEmailsCount="updatedEmailsCount"
-                                    @view-email="viewEmail">
+                                    @view-email="viewEmail"
+                                    @view-email-if-preview-opened="viewEmailIfPreviewOpened">
                                 </mail-list>
                             </v-col>
 
