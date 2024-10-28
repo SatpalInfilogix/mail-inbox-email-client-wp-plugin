@@ -1,0 +1,65 @@
+.mail-inbox-container {
+    position: fixed;
+    top: 32px;
+    left: 160px;
+    right: 0;
+    bottom: 32px;
+}
+
+#wpbody-content {
+    padding-bottom: 0;
+}
+
+#wpfooter {
+    display: none;
+}
+
+.divider {
+    background-color: #ccc;
+    cursor: ew-resize;
+    position: relative;
+    border: 1.5px solid !important;
+}
+
+.fullscreen-mode #wpadminbar,
+.fullscreen-mode #adminmenuback,
+.fullscreen-mode #adminmenuwrap {
+    display: none !important;
+}
+
+.fullscreen-mode .mail-inbox-container {
+    left: 0 !important;
+    top: 0;
+    bottom: 0;
+}
+
+.fullscreen-mode .wp-toolbar{
+    padding-top: 8px;
+}
+
+.active-folder{
+    background-color: #cdcaca!important;
+}
+
+.form-inputs .v-text-field input{
+    padding-bottom: 4px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    padding-top: 24px !important;
+}
+
+.v-field__input input{
+    display: none!important;
+}
+
+.reduce-dt-spacing th, .reduce-dt-spacing td{
+    padding: 0 4px!important;
+}
+
+.reduce-dt-spacing td .v-input{
+    padding-bottom: 6px!important;
+}
+
+.reduce-dt-spacing td .v-input__details{
+    display: none;
+}
