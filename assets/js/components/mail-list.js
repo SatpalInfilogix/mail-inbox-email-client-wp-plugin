@@ -43,6 +43,7 @@ export default {
             snackbar: false,
             snackbarMessage: '',
             snackbarColor: 'success',
+            tempSelectedEmail: {}
         };
     },
     methods: {
@@ -316,9 +317,8 @@ export default {
                 </v-icon>
             </template>
 
-            
             <template v-slot:item="{ item }">
-                <tr class="cursor-default" :class="{'bg-cyan-lighten-5': selectedEmailId === item.id}" @dblclick="onRowClick(item)">
+                <tr class="cursor-default" :class="{'bg-cyan-lighten-5': selectedEmailId === item.id, 'bg-amber-lighten-4' : tempSelectedEmail.id === item.id}" @click="tempSelectedEmail=item" @dblclick="onRowClick(item)">
                     <td>
                         <v-checkbox
                             v-model="item.selected"
