@@ -201,8 +201,8 @@ export default {
             const apiResponse = await response.json();
             if(apiResponse.success){
                 this.isSyncing = true;
-                //this.foldersToBeSynced = this.sortFolders(apiResponse.data.folders);
-                this.foldersToBeSynced = apiResponse.data.folders;
+                this.foldersToBeSynced = this.sortFolders(apiResponse.data.folders);
+                //this.foldersToBeSynced = apiResponse.data.folders;
 
                 if(this.foldersToBeSynced.length > 0){
                     this.syncFolder = this.foldersToBeSynced[0];

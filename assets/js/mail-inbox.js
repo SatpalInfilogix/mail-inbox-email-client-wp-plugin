@@ -303,7 +303,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 @update-widths="updateWidths"
                             ></divider-layout>
 
-                            <v-col v-if="showPreview" :style="{ flexBasis: computedPreviewWidth + '%', maxWidth: computedPreviewWidth + '%', overflow: 'scroll' }" class="d-flex flex-column pa-0">
+                            <v-col v-if="showPreview" :style="{ flexBasis: computedPreviewWidth + '%', maxWidth: computedPreviewWidth + '%' }" class="d-flex flex-column pa-0">
                                 <mail-preview :email="activeEmail" @close-preview="showPreview = false"></mail-preview>
                             </v-col>
                         </div>

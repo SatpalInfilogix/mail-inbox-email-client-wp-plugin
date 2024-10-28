@@ -79,6 +79,8 @@ function mail_inbox_activate_plugin() {
         web_link TEXT,
         body_content_type VARCHAR(50),
         body_content LONGTEXT,
+        sender LONGTEXT DEFAULT NULL,
+        `from` LONGTEXT DEFAULT NULL,
         to_recipients LONGTEXT,
         cc_recipients LONGTEXT,
         bcc_recipients LONGTEXT,

@@ -63,3 +63,7 @@
 .reduce-dt-spacing td .v-input__details{
     display: none;
 }
+
+.email-preview-container .v-card-item__content{
+    overflow-x: scroll!important;
+}

@@ -67,7 +67,7 @@ export default {
                         subject
                         received_datetime
                         to_recipients
-                        reply_to
+                        sender
                         additionalInfo {
                             tag_id
                             tag_name
@@ -309,6 +309,13 @@ export default {
                 :items-per-page="-1"
                 density="comfortable"
             >
+
+            <template v-slot:header.attachments="{ header }">
+                <v-icon small class="ml-2">
+                    mdi-paperclip
+                </v-icon>
+            </template>
+
             
             <template v-slot:item="{ item }">
                 <tr class="cursor-default" :class="{'bg-cyan-lighten-5': selectedEmailId === item.id}" @dblclick="onRowClick(item)">
@@ -321,33 +328,36 @@ export default {
                     </td>
 
                     <td>
-                        <v-chip
-                            :style="{
-                                backgroundColor: getTagProperty('backgroundColor', item.additionalInfo.tag_id),
-                                color: getTagProperty('fontColor', item.additionalInfo.tag_id)
-                            }"
-                            size="small" 
-                            v-if="item.additionalInfo.tag_name"
-                            @click="openAddTagDialog(item)"
-                        >
-                            {{ item.additionalInfo.tag_name }}
-                            <v-icon
-                                small
-                                class="ml-2"
-                                @click.stop="confirmUnassignTag(item)"
+                        <div style="width: 50px">
+                            <v-chip
+                                :style="{
+                                    backgroundColor: getTagProperty('backgroundColor', item.additionalInfo.tag_id),
+                                    color: getTagProperty('fontColor', item.additionalInfo.tag_id)
+                                }"
+                                size="small" 
+                                v-if="item.additionalInfo.tag_name"
+                                @click="openAddTagDialog(item)"
                             >
-                                mdi-close
-                            </v-icon>
-                        </v-chip>
-                        <p class="text-decoration-none text-caption my-0" v-else @click="openAddTagDialog(item)">Add Tag</p>
+                                {{ item.additionalInfo.tag_name }}
+                                <v-icon
+                                    small
+                                    class="ml-2"
+                                    @click.stop="confirmUnassignTag(item)"
+                                >
+                                    mdi-close
+                                </v-icon>
+                            </v-chip>
+                            <p class="text-decoration-none text-caption my-0 cursor-pointer" v-else @click="openAddTagDialog(item)">Add Tag</p>
+                        </div>
                     </td>
 
                     <td>{{ item.additionalInfo.agent_id || 'N/A' }}</td>
 
                     <td>
-                        <div class="text-truncate" style="width: 200px;">
+                        <div class="text-truncate" style="width: 140px;">
                             <span v-if="activeFolder.display_name==='Inbox'">
-                                {{ JSON.parse(item.reply_to)[0] ? JSON.parse(item.reply_to)[0].emailAddress.name : 'Unknown' }}
+                                {{ JSON.parse(item.sender) ? JSON.parse(item.sender).emailAddress.name : 'Unknown' }}<br>
+                                {{ JSON.parse(item.sender) ? JSON.parse(item.sender).emailAddress.address : 'Unknown' }}<br>
                             </span>
                             <span v-else>
                                 {{ JSON.parse(item.to_recipients)[0] ? JSON.parse(item.to_recipients)[0].emailAddress.name : 'Unknown' }}
@@ -370,7 +380,7 @@ export default {
 
                     <td>
                         <v-chip size="x-small" color="primary" text-color="white">
-                            {{ item.attachments ? item.attachments.length : 0 }} attachments
+                            {{ item.attachments ? item.attachments.length : 0 }}
                         </v-chip>
                     </td>
 

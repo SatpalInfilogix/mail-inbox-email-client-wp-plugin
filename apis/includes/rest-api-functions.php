@@ -95,6 +95,8 @@ function updateOrCreateEmail($account_id, $email)
         'web_link' => $email['webLink'],
         'body_content_type' => $email['body']['contentType'],
         'body_content' => $email['body']['content'],
+        'sender' => json_encode($email['sender']),
+        'from' => json_encode($email['from']),
         'to_recipients' => json_encode($email['toRecipients']),
         'cc_recipients' => json_encode($email['ccRecipients']),
         'bcc_recipients' => json_encode($email['bccRecipients']),

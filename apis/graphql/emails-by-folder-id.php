@@ -49,6 +49,7 @@ add_action('graphql_register_types', function () {
             'to_recipients' => ['type' => 'String', 'description' => __('The recipients of the email', 'your-text-domain')],
             'cc_recipients' => ['type' => 'String', 'description' => __('The CC recipients of the email', 'your-text-domain')],
             'bcc_recipients' => ['type' => 'String', 'description' => __('The BCC recipients of the email', 'your-text-domain')],
+            'sender' => ['type' => 'String', 'description' => __('The sender address of the email', 'your-text-domain')],
             'reply_to' => ['type' => 'String', 'description' => __('The reply-to addresses of the email', 'your-text-domain')],
             'flag_status' => ['type' => 'String', 'description' => __('The flag status of the email', 'your-text-domain')],
             'created_datetime' => ['type' => 'String', 'description' => __('The datetime when the email was created', 'your-text-domain')],
