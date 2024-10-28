@@ -66,8 +66,6 @@ function fetchFoldersRecursively($url, $accessToken, &$folders)
     return $folders;
 }
 
-
-
 function countEmailsByFolderId($accessToken, $accountId, $folderId)
 {
     // Prepare the API endpoint for counting messages in the specified folder
@@ -233,13 +231,39 @@ function getNewEmails($accountId, $folder_id = ''){
         ],
     ]);
 
-    $response = json_decode($response['body'], true);
+    $emails = json_decode($response['body'], true);
     
-    if (isset($response['error']['code'])) {
-        if ($response['error']['code'] === 'InvalidAuthenticationToken') {
-            return $response;
+    if (isset($emails['error']['code'])) {
+        if ($emails['error']['code'] === 'InvalidAuthenticationToken') {
+            return $emails;
         }
     }
-    
-    return $response['value'];
+ 
+    $emails_with_attachments = [];
+
+    foreach ($emails['value'] as $email) {
+        if ($email['hasAttachments']) {
+            $attachments_response = wp_remote_get(GRAPH_API_BASE_ENDPOINT . "messages/{$email['id']}/attachments", [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Accept' => 'application/json',
+                ],
+            ]);
+
+            $attachments = json_decode($attachments_response['body'], true);
+            $email['attachments'] = $attachments['value'];
+
+            // Check for inline attachments and replace cid references in the email body
+            foreach ($email['attachments'] as $attachment) {
+                if (isset($attachment['contentId']) && strpos($email['body']['content'], "cid:" . $attachment['contentId']) !== false) {
+                    $base64Data = 'data:' . $attachment['contentType'] . ';base64,' . $attachment['contentBytes'];
+                    $email['body']['content'] = str_replace("cid:" . $attachment['contentId'], $base64Data, $email['body']['content']);
+                }
+            }
+        }
+
+        $emails_with_attachments[] = $email;
+    }
+
+    return $emails_with_attachments;
 }
