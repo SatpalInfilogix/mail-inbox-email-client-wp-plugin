@@ -1,9 +1,11 @@
 import AssignTagDialog from './tag/assign-tag-dialog.js';
+import AssignAgentDialog from './agent/assign-agent-dialog.js';
 
 export default {
     name: 'MailList',
     components: {
-        AssignTagDialog
+        AssignTagDialog,
+        AssignAgentDialog
     },
     props: {
         activeAccount: {
@@ -37,13 +39,16 @@ export default {
             selectedEmailId: 0,
             tags: [],
             isAddTagDialogOpen: false,
+            isAssignAgentDialogOpen: false,
             showUnAssignTagModal: false,
+            showUnAssignAgentModal: false,
             categories: [],
             tagId: 0,
             snackbar: false,
             snackbarMessage: '',
             snackbarColor: 'success',
-            tempSelectedEmail: {}
+            tempSelectedEmail: {},
+            agents: []
         };
     },
     methods: {
@@ -107,6 +112,19 @@ export default {
                             email.additionalInfo.tag_id = null;
                         }
     
+                        if (email.additionalInfo.agent_id) {
+                            const associatedAgent = this.agents.find(agent => agent.id === email.additionalInfo.agent_id);
+
+                            if(associatedAgent){
+                                email.additionalInfo.agent = {
+                                    id: associatedAgent.id,
+                                    name: associatedAgent.name
+                                };
+                            }
+                        } else {
+                            email.additionalInfo.agent_id = null;
+                        }
+    
                         return email;
                     });
     
@@ -154,6 +172,31 @@ export default {
             this.tags = apiResponse.data.mailInboxTags;
         },
         
+        async fetchAgents() {
+            const query = `
+            query GetMailInboxAgents {
+                mailInboxAgents {
+                    id
+                    name
+                    email
+                }
+            }
+            `;
+
+            const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: query
+                })
+            });
+
+            const apiResponse = await response.json();
+            this.agents = apiResponse.data.mailInboxAgents;
+        },
+        
         async fetchCategories() {
             const query = `
             query {
@@ -193,7 +236,11 @@ export default {
         async handleEmailTag(emailId, tagId) {
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'tag_id', tagId);
             if(apiResponse.success){
-                this.showSnackbar(`Tag successfully assigned!`, 'success');
+                if(tagId){
+                    this.showSnackbar(`Tag successfully assigned!`, 'success');
+                } else {
+                    this.showSnackbar(`Tag unassigned successfully!`, 'success');
+                }
 
                 // Update the local email data to reflect the new tag
                 const email = this.loadedMails.find(mail => mail.id === emailId);
@@ -208,6 +255,30 @@ export default {
                         name: email.additionalInfo.tag_name,
                         fontColor: this.getTagProperty('fontColor', email.additionalInfo.tag_id),
                         backgroundColor: this.getTagProperty('backgroundColor', email.additionalInfo.tag_id),
+                    };
+                }
+            } else {
+                this.showSnackbar(`Failed to assign tag`, 'error');
+            }
+        },
+        async handleEmailAgent(emailId, agentId) {
+            const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'agent_id', agentId);
+            if(apiResponse.success){
+                if(agentId){
+                    this.showSnackbar(`Agent successfully assigned!`, 'success');
+                } else {
+                    this.showSnackbar(`Agent unassigned successfully!`, 'success');
+                }
+
+                // Update the local email data to reflect the new tag
+                const email = this.loadedMails.find(mail => mail.id === emailId);
+                if (email) {
+                    email.additionalInfo.agent_id = agentId;
+                    const assignedAgent = this.agents.find(agent => agent.id === agentId);
+                    
+                    email.additionalInfo.agent = {
+                        id: assignedAgent.id,
+                        name: assignedAgent.name
                     };
                 }
             } else {
@@ -246,13 +317,26 @@ export default {
             this.currentEmailData = emailData;
             this.isAddTagDialogOpen = true;
         },
+        openAssignAgentDialog(emailData) {
+            this.currentEmailData = emailData;
+            this.isAssignAgentDialogOpen = true;
+        },
         confirmUnassignTag(emailData){
             this.currentEmailData = emailData;
             this.showUnAssignTagModal = true;
         },
+        confirmUnassignAgent(emailData){
+            this.currentEmailData = emailData;
+            this.showUnAssignAgentModal = true;
+        },
         closeAddTagDialog() {
           this.isAddTagDialogOpen = false;
           this.showUnAssignTagModal = false;
+          this.currentEmailData = null;
+        },
+        closeAssignAgentDialog() {
+          this.isAssignAgentDialogOpen = false;
+          this.showUnAssignAgentModal = false;
           this.currentEmailData = null;
         },
     },
@@ -272,6 +356,7 @@ export default {
     },
     mounted() {
         this.fetchTags();
+        this.fetchAgents();
         this.fetchCategories();
         this.$nextTick(() => {
             // Access the scroll container inside v-data-table
@@ -351,7 +436,21 @@ export default {
                         </div>
                     </td>
 
-                    <td>{{ item.additionalInfo.agent_id || 'N/A' }}</td>
+                    <td>
+                        <div style="width: 85px">
+                            <v-chip size="small" v-if="item.additionalInfo.agent_id && item.additionalInfo.agent_id > 0" @click="openAssignAgentDialog(item)">
+                                <span class="text-truncate" style="width: 46px">{{ item.additionalInfo.agent.name }}</span>
+                                <v-icon
+                                    small
+                                    class="ml-2"
+                                    @click.stop="confirmUnassignAgent(item)"
+                                >
+                                mdi-close
+                                </v-icon>
+                            </v-chip>
+                            <p class="text-decoration-none text-caption my-0 cursor-pointer" v-else @click="openAssignAgentDialog(item)">Assign Agent</p>
+                        </div>
+                    </td>
 
                     <td>
                         <div class="text-truncate" style="width: 140px;">
@@ -511,6 +610,16 @@ export default {
         @close="closeAddTagDialog"
         @error="showSnackbar"
     ></AssignTagDialog>
+
+    <AssignAgentDialog
+        :visible="isAssignAgentDialogOpen"
+        :unAssign="showUnAssignAgentModal"
+        :agents="agents"
+        :selectedEmail="currentEmailData"
+        @agent-assigned="handleEmailAgent"
+        @close="closeAssignAgentDialog"
+        @error="showSnackbar"
+    ></AssignAgentDialog>
 
     <v-snackbar
         v-model="snackbar"

@@ -86,7 +86,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
 
                 const apiResponse = await response.json();
-                console.log('..',apiResponse.data.getEmailById)
                 this.activeEmail = apiResponse.data.getEmailById;
                 this.showPreview = true;
 

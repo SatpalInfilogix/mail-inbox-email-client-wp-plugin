@@ -12,10 +12,12 @@ function settings() {
         $client_id = sanitize_text_field($_POST['mail_client_id']);
         $client_secret = sanitize_text_field($_POST['mail_client_secret']);
         $redirect_uri = esc_url_raw($_POST['mail_redirect_uri']);
+        $agent_role = sanitize_text_field($_POST['mail_agent_role']);
 
         update_option('mail_inbox_client_id', mail_inbox_encrypt($client_id));
         update_option('mail_inbox_client_secret', mail_inbox_encrypt($client_secret));
         update_option('mail_inbox_redirect_uri', $redirect_uri);
+        update_option('mail_inbox_agent_role', $agent_role);
 
         echo '<div class="updated"><p>Settings saved.</p></div>';
     }
@@ -23,6 +25,7 @@ function settings() {
     $client_id_encrypted = get_option('mail_inbox_client_id', '');
     $client_secret_encrypted = get_option('mail_inbox_client_secret', '');
     $redirect_uri = get_option('mail_inbox_redirect_uri', '');
+    $agent_role = get_option('mail_inbox_agent_role', '');
 
     $client_id = $client_id_encrypted ? mail_inbox_decrypt($client_id_encrypted) : '';
     $client_secret = $client_secret_encrypted ? mail_inbox_decrypt($client_secret_encrypted) : '';
@@ -32,6 +35,9 @@ function settings() {
         $client_id = '';
         $client_secret = '';
     }
+
+    global $wp_roles;
+    $roles = $wp_roles->roles;
     ?>
     <div class="wrap">
         <h1>Mail Inbox Settings</h1>
@@ -49,6 +55,19 @@ function settings() {
                 <tr valign="top">
                     <th scope="row"><label for="mail_redirect_uri">Redirect URI</label></th>
                     <td><input type="text" name="mail_redirect_uri" id="mail_redirect_uri" value="<?php echo esc_attr($redirect_uri); ?>" class="regular-text" /></td>
+                </tr>
+                <tr valign="top">
+                    <th scope="row"><label for="mail_agent_role">Agent Role</label></th>
+                    <td>
+                        <select name="mail_agent_role" id="mail_agent_role">
+                            <option value="">-- Select Role --</option>
+                            <?php
+                            foreach ($roles as $role_key => $role_data) {
+                                echo "<option value='" . esc_attr($role_data['name']) . "' " . ($agent_role == $role_data['name'] ? 'selected' : '') . ">" . esc_html($role_data['name']) . "</option>";
+                            }
+                            ?>
+                        </select>
+                    </td>
                 </tr>
             </table>
             <?php submit_button('Save Settings', 'primary', 'mail_inbox_save_settings'); ?>
