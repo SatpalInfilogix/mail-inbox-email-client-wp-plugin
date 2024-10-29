@@ -253,8 +253,32 @@ function getNewEmails($accountId, $folder_id = ''){
             $attachments = json_decode($attachments_response['body'], true);
             $email['attachments'] = $attachments['value'];
 
-            // Check for inline attachments and replace cid references in the email body
+            // Ensure the email-attachments directory exists once
+            $baseDir = WP_CONTENT_DIR . '/uploads/email-attachments/';
+            if (!is_dir($baseDir)) {
+                mkdir($baseDir, 0777, true);
+            }
+
+            // Create a specific directory for each email
+            $emailDir = $baseDir . uniqid();
+            if (!is_dir($emailDir)) {
+                mkdir($emailDir, 0777, true);
+            }
+
+            $path = $emailDir . '/';
+
+            // Loop through attachments, save and handle inline references
             foreach ($email['attachments'] as $attachment) {
+                $attachmentName = $path . $attachment['name'];
+                $attachmentContent = base64_decode($attachment['contentBytes']);
+
+                // Check if writing to file is successful
+                if (file_put_contents($attachmentName, $attachmentContent) === false) {
+                    error_log("Failed to save attachment {$attachment['name']} for email {$email['id']}");
+                    continue;
+                }
+
+                // Replace inline content ID with base64 data URI
                 if (isset($attachment['contentId']) && strpos($email['body']['content'], "cid:" . $attachment['contentId']) !== false) {
                     $base64Data = 'data:' . $attachment['contentType'] . ';base64,' . $attachment['contentBytes'];
                     $email['body']['content'] = str_replace("cid:" . $attachment['contentId'], $base64Data, $email['body']['content']);

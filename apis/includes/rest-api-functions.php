@@ -133,7 +133,6 @@ function updateOrCreateEmail($account_id, $email)
             if ($result === false) {
                 throw new Exception("Error inserting email: " . $wpdb->last_error);
             }
-            return 'asjkljlkj'; 
         //}
     } catch (Exception $e) {
         wp_send_json_error($e->getMessage(), 500);

@@ -83,16 +83,10 @@ function syncEmails() {
     if (isset($newEmails['error']['code'])) {
         handle_auth_error($newEmails['error']['code']);
     }
-
-    $operationStatus = null;
     
     array_walk($newEmails, function ($email) use ($account_id) {
-        $operationStatus = updateOrCreateEmail($account_id, $email);
-        print_r($operationStatus);
-        die();
+        updateOrCreateEmail($account_id, $email);
     });
-    
-   
 
     wp_send_json_success([
         'message' => count($newEmails).' emails synced successfully',
