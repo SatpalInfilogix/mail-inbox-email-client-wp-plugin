@@ -30,7 +30,7 @@ function mail_inbox_activate_plugin() {
         INDEX idx_expires_in (expires_in)
     ) $charset_collate;";
 
-    // SQL statement to create the folders table with indexes
+    // SQL statement to create the folders table without foreign key constraints
     $sql_folders = "CREATE TABLE ".MAIL_INBOX_FOLDERS_TABLE." (
         id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
         account_id BIGINT(20) UNSIGNED NOT NULL,
@@ -46,7 +46,6 @@ function mail_inbox_activate_plugin() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
         PRIMARY KEY  (id),
-        FOREIGN KEY (account_id) REFERENCES ".MAIL_INBOX_ACCOUNTS_TABLE."(id) ON DELETE CASCADE,
         INDEX idx_account_id (account_id),
         INDEX idx_folder_id (folder_id),
         INDEX idx_local_folder_parent_id (local_folder_parent_id),
@@ -59,7 +58,7 @@ function mail_inbox_activate_plugin() {
         INDEX idx_updated_at (updated_at)
     ) $charset_collate ENGINE=InnoDB;";
     
-    // SQL statement to create the emails table with indexes
+    // SQL statement to create the emails table without foreign key constraints
     $sql_emails = "CREATE TABLE ".MAIL_INBOX_EMAILS_TABLE." (
         id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
         account_id BIGINT(20) UNSIGNED NOT NULL,
@@ -93,8 +92,6 @@ function mail_inbox_activate_plugin() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
         PRIMARY KEY (id),
-        FOREIGN KEY (account_id) REFERENCES ".MAIL_INBOX_ACCOUNTS_TABLE."(id) ON DELETE CASCADE,
-        FOREIGN KEY (folder_id) REFERENCES ".MAIL_INBOX_FOLDERS_TABLE."(id) ON DELETE CASCADE,
         INDEX idx_account_id (account_id),
         INDEX idx_folder_id (folder_id),
         INDEX idx_conversation_id (conversation_id),
@@ -105,7 +102,22 @@ function mail_inbox_activate_plugin() {
         INDEX idx_created_at (created_at),
         INDEX idx_updated_at (updated_at)
     ) $charset_collate ENGINE=InnoDB;";
-    
+
+    // SQL statement to create the email attachments table without foreign key constraints
+    $sql_emails_attachments = "CREATE TABLE " . MAIL_INBOX_EMAILS_ATTACHMENTS_TABLE . " (
+        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        email_id BIGINT(20) UNSIGNED NOT NULL,
+        name VARCHAR(255) DEFAULT NULL,
+        path VARCHAR(255) DEFAULT NULL,
+        content_type VARCHAR(255) DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
+        PRIMARY KEY (id),
+        INDEX idx_email_id (email_id),
+        INDEX idx_created_at (created_at),
+        INDEX idx_updated_at (updated_at)
+    ) $charset_collate;";
+
     // SQL statement to create the categories table
     $sql_categories = "CREATE TABLE ".MAIL_INBOX_CATEGORIES_TABLE." (
         id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -121,8 +133,7 @@ function mail_inbox_activate_plugin() {
         INDEX idx_created_at (created_at),
         INDEX idx_updated_at (updated_at)
     ) $charset_collate;";
-    
-    
+
     // SQL statement to create the tags table
     $sql_tags = "CREATE TABLE ".MAIL_INBOX_TAGS_TABLE." (
         id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -138,8 +149,8 @@ function mail_inbox_activate_plugin() {
         INDEX idx_created_at (created_at),
         INDEX idx_updated_at (updated_at)
     ) $charset_collate;";
-    
-    // SQL statement to create the email additional info table
+
+    // SQL statement to create the email additional info table without foreign key constraints
     $sql_emails_additional_info = "CREATE TABLE " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . " (
         id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
         email_id BIGINT(20) UNSIGNED NOT NULL,
@@ -148,14 +159,14 @@ function mail_inbox_activate_plugin() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
         PRIMARY KEY (id),
-        FOREIGN KEY (email_id) REFERENCES ".MAIL_INBOX_EMAILS_TABLE."(id) ON DELETE CASCADE,
+        INDEX idx_email_id (email_id),
         INDEX idx_tag_id (tag_id),
         INDEX idx_agent_id (agent_id),
         INDEX idx_created_at (created_at),
         INDEX idx_updated_at (updated_at)
     ) $charset_collate;";
-    
-    // SQL statement to create the email additional info table
+
+    // SQL statement to create the email additional multiple info table without foreign key constraints
     $sql_emails_additional_multiple_info = "CREATE TABLE " . MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE . " (
         id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
         email_id BIGINT(20) UNSIGNED NOT NULL,
@@ -163,21 +174,46 @@ function mail_inbox_activate_plugin() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
         PRIMARY KEY (id),
-        FOREIGN KEY (email_id) REFERENCES ".MAIL_INBOX_EMAILS_TABLE."(id) ON DELETE CASCADE,
+        INDEX idx_email_id (email_id),
         INDEX idx_category_id (category_id),
         INDEX idx_created_at (created_at),
         INDEX idx_updated_at (updated_at)
     ) $charset_collate;";
-    
+
     // Include the required file for dbDelta
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
-    // Execute the SQL statement
+    // Execute the SQL statements
     dbDelta($sql_accounts);
     dbDelta($sql_folders);
     dbDelta($sql_emails);
+    dbDelta($sql_emails_attachments);
     dbDelta($sql_categories);
     dbDelta($sql_tags);
     dbDelta($sql_emails_additional_info);
     dbDelta($sql_emails_additional_multiple_info);
+
+    // Function to check and add foreign key constraint
+    function add_foreign_key($table_name, $constraint_name, $foreign_key, $reference_table, $reference_key) {
+        global $wpdb;
+        $exists = $wpdb->get_var("
+            SELECT CONSTRAINT_NAME 
+            FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+            WHERE CONSTRAINT_TYPE = 'FOREIGN KEY' 
+              AND TABLE_SCHEMA = DATABASE() 
+              AND TABLE_NAME = '{$table_name}' 
+              AND CONSTRAINT_NAME = '{$constraint_name}'
+        ");
+        if (!$exists) {
+            $wpdb->query("ALTER TABLE {$table_name} ADD CONSTRAINT {$constraint_name} FOREIGN KEY ({$foreign_key}) REFERENCES {$reference_table}({$reference_key}) ON DELETE CASCADE;");
+        }
+    }
+
+    // Add foreign key constraints
+    add_foreign_key(MAIL_INBOX_FOLDERS_TABLE, 'fk_account_id', 'account_id', MAIL_INBOX_ACCOUNTS_TABLE, 'id');
+    add_foreign_key(MAIL_INBOX_EMAILS_TABLE, 'fk_account_id_email', 'account_id', MAIL_INBOX_ACCOUNTS_TABLE, 'id');
+    add_foreign_key(MAIL_INBOX_EMAILS_TABLE, 'fk_folder_id_email', 'folder_id', MAIL_INBOX_FOLDERS_TABLE, 'id');
+    add_foreign_key(MAIL_INBOX_EMAILS_ATTACHMENTS_TABLE, 'fk_email_id_attachment', 'email_id', MAIL_INBOX_EMAILS_TABLE, 'id');
+    add_foreign_key(MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE, 'fk_email_id_additional_info', 'email_id', MAIL_INBOX_EMAILS_TABLE, 'id');
+    add_foreign_key(MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE, 'fk_email_id_additional_multiple_info', 'email_id', MAIL_INBOX_EMAILS_TABLE, 'id');
 }

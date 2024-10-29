@@ -12,6 +12,10 @@ export default {
             type: Object,
             required: true
         },
+        filters: {
+            type: Object,
+            default: {}
+        },
         activeFolder: {
             type: Object,
             required: true
@@ -70,10 +74,18 @@ export default {
             if (this.loading || this.allLoaded || !this.activeFolder) return; // Prevent multiple loads or loading after all emails are loaded
     
             this.loading = true;
+            console.log('filters',this.filters)
             
             const query = `
                 query {
-                    getEmailsByFolderId(folder_id: ${this.activeFolder.id}, limit: 20, offset: ${offset}) {
+                    getEmailsByFolderId(
+                        folder_id: ${this.activeFolder.id}, 
+                        limit: 20, offset: ${offset}, 
+                        filters: {
+                            startDate: "${this.filters.startDate || ''}",
+                            endDate: "${this.filters.endDate || ''}",
+                            keyword: "${this.filters.keyword || ''}"
+                        }) {
                         id
                         subject
                         received_datetime
@@ -355,6 +367,13 @@ export default {
         },
         updatedEmailsCount: {
             handler() {
+                this.loadEmails();
+            },
+            deep: true
+        },
+        filters: {
+            handler() {
+                console.log('here!')
                 this.loadEmails();
             },
             deep: true

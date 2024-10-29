@@ -260,7 +260,10 @@ function getNewEmails($accountId, $folder_id = ''){
             }
 
             // Create a specific directory for each email
-            $emailDir = $baseDir . uniqid();
+            $uniqueId = uniqid();
+            $emailDir = $baseDir . $uniqueId;
+            $localDir = 'uploads/email-attachments/'.$uniqueId;
+
             if (!is_dir($emailDir)) {
                 mkdir($emailDir, 0777, true);
             }
@@ -268,7 +271,7 @@ function getNewEmails($accountId, $folder_id = ''){
             $path = $emailDir . '/';
 
             // Loop through attachments, save and handle inline references
-            foreach ($email['attachments'] as $attachment) {
+            foreach ($email['attachments'] as $key => $attachment) {
                 $attachmentName = $path . $attachment['name'];
                 $attachmentContent = base64_decode($attachment['contentBytes']);
 
@@ -277,6 +280,9 @@ function getNewEmails($accountId, $folder_id = ''){
                     error_log("Failed to save attachment {$attachment['name']} for email {$email['id']}");
                     continue;
                 }
+
+                // Add the local path to the attachment details
+                $email['attachments'][$key]['saved_path'] = $localDir.'/'.$attachment['name'];
 
                 // Replace inline content ID with base64 data URI
                 if (isset($attachment['contentId']) && strpos($email['body']['content'], "cid:" . $attachment['contentId']) !== false) {

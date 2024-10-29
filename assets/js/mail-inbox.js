@@ -31,7 +31,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 tabFolders: [],
                 activeFolder: {},
                 connectedAccounts: [],
-                updatedEmailsCount: 0
+                updatedEmailsCount: 0,
+                filterDate: Vue.ref([]),
+                filters: {}
             };
         },
         computed: {
@@ -42,6 +44,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return this.showPreview ? this.previewWidth : 0;
             },
         },
+        components: { VueDatePicker },
         methods: {
             updateWidths(widths) {
                 this.sidebarWidth = widths.sidebarWidth;
@@ -71,6 +74,10 @@ document.addEventListener("DOMContentLoaded", function () {
                             categories {
                                 id
                                 name
+                            }
+                            attachments {
+                                name
+                                path
                             }
                         }
                     }`;
@@ -200,6 +207,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 if(isEmailSynced > 0){
                     this.updatedEmailsCount++;
                 }
+            },
+            onDateChange(newDateRange) {
+                const formatDate = (date) => {
+                    if (!date) return null;
+                    return new Date(date).toISOString().split('T')[0]; // Returns 'YYYY-MM-DD'
+                };
+
+                
+                this.filters.startDate = formatDate(newDateRange[0]);
+                this.filters.endDate = formatDate(newDateRange[1]);
+                this.filterDate = newDateRange;
             }
         },
         mounted(){
@@ -244,16 +262,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <v-container>
                                     <v-row>
                                         <v-col cols="12" sm="6" md="4">
-                                            <v-text-field
-                                                append-inner-icon="mdi-magnify"
-                                                density="compact"
-                                                label="Search from, subject"
-                                                variant="solo"
-                                                hide-details
-                                                single-line
-                                                class="p-0 no-padding"
-                                                style="padding: 0;"
-                                            ></v-text-field>
+                                           <vue-date-picker v-model="filterDate" range :max-date="new Date()" placeholder="Filter emails by date" :enable-time-picker="false" multi-calendars text-input @update:model-value="onDateChange"></vue-date-picker>
                                         </v-col>
                                         <v-col cols="12" sm="6" md="4">
                                             <v-text-field
@@ -289,6 +298,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     :activeAccount="account" 
                                     :activeFolder="activeFolder" 
                                     :updatedEmailsCount="updatedEmailsCount"
+                                    :filters="filters"
                                     @view-email="viewEmail"
                                     @view-email-if-preview-opened="viewEmailIfPreviewOpened">
                                 </mail-list>

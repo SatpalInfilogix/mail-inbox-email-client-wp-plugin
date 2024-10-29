@@ -63,7 +63,7 @@ function updateOrCreateEmailFolder($account_id, $folder)
 function updateOrCreateEmail($account_id, $email)
 {
     global $wpdb;
-    
+
     try {
         $email_id = $email['id'];
         $parent_folder_id = $email['parentFolderId'];
@@ -128,11 +128,38 @@ function updateOrCreateEmail($account_id, $email)
                 MAIL_INBOX_EMAILS_TABLE,
                 $data
             );
-
+            
             // Error handling
             if ($result === false) {
                 throw new Exception("Error inserting email: " . $wpdb->last_error);
             }
+
+                  
+            if(isset($email['attachments'])){
+                $attachments = $email['attachments'];
+                $saved_email_id = $wpdb->insert_id;
+
+                foreach($attachments as $attachment){
+                    $attachment_data = [
+                        'email_id'      => $saved_email_id,
+                        'path'          => $attachment['saved_path'],
+                        'name'          => $attachment['name'],
+                        'content_type'  => $attachment['contentType'],
+                    ];
+
+                    // Insert attachment data into MAIL_INBOX_EMAILS_ATTACHMENTS_TABLE
+                    $attachment_result = $wpdb->insert(
+                        MAIL_INBOX_EMAILS_ATTACHMENTS_TABLE,
+                        $attachment_data
+                    );
+
+                    // Error handling for attachments insertion
+                    if ($attachment_result === false) {
+                        error_log("Failed to insert attachment for email ID {$saved_email_id}: " . $wpdb->last_error);
+                    }
+                }
+            }
+            
         //}
     } catch (Exception $e) {
         wp_send_json_error($e->getMessage(), 500);
