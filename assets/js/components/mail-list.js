@@ -413,7 +413,7 @@ export default {
 
                     <!-- Updated Tag Template -->
                     <td>
-                        <div style="width: 50px">
+                        <div style="width: 65px">
                             <v-chip
                                 :style="{
                                     backgroundColor: getTagProperty('backgroundColor', item.additionalInfo?.tag?.id),
@@ -423,7 +423,7 @@ export default {
                                 v-if="item.additionalInfo && item.additionalInfo.tag && item.additionalInfo.tag.name"
                                 @click="openAddTagDialog(item)"
                             >
-                                {{ item.additionalInfo.tag.name }}
+                                <span class="text-truncate" style="width: 28px">{{ item.additionalInfo.tag.name }}</span>
                                 <v-icon
                                     small
                                     class="ml-2"
@@ -431,6 +431,8 @@ export default {
                                 >
                                     mdi-close
                                 </v-icon>
+
+                                <v-tooltip activator="parent" location="top">{{ item.additionalInfo.tag.name }}</v-tooltip>
                             </v-chip>
                             <p class="text-decoration-none text-caption my-0 cursor-pointer" v-else @click="openAddTagDialog(item)">Add Tag</p>
                         </div>
@@ -448,6 +450,8 @@ export default {
                                 >
                                 mdi-close
                                 </v-icon>
+
+                                <v-tooltip activator="parent" location="top">{{ item.additionalInfo.agent.name }}</v-tooltip>
                             </v-chip>
                             <p class="text-decoration-none text-caption my-0 cursor-pointer" v-else @click="openAssignAgentDialog(item)">Assign Agent</p>
                         </div>
@@ -458,6 +462,15 @@ export default {
                             <span v-if="activeFolder.display_name==='Inbox'">
                                 {{ JSON.parse(item.sender)?.emailAddress?.name || 'Unknown' }}<br>
                                 {{ JSON.parse(item.sender)?.emailAddress?.address || 'Unknown' }}<br>
+
+                                <v-tooltip location="top" activator="parent">
+                                    <template v-slot:default>
+                                        <span>
+                                            {{ JSON.parse(item.sender)?.emailAddress?.name || 'Unknown' }}<br>
+                                            {{ JSON.parse(item.sender)?.emailAddress?.address || 'Unknown' }}
+                                        </span>
+                                    </template>
+                                </v-tooltip>
                             </span>
                             <span v-else>
                                 {{ JSON.parse(item.to_recipients)[0]?.emailAddress?.name || 'Unknown' }}
@@ -468,6 +481,8 @@ export default {
                     <td>
                         <div class="text-truncate" style="width: 200px;">
                             {{ item.subject }}
+                             
+                            <v-tooltip activator="parent" location="top">{{ item.subject }}</v-tooltip>
                         </div>
                     </td>
 
