@@ -92,6 +92,8 @@ export default {
                             searchFrom: "${this.filters.searchFrom || ''}",
                             searchSubject: "${this.filters.searchSubject || ''}",
                             agentId: ${agentIdValue !== null ? agentIdValue : 'null'},
+                            tags: "${this.filters.tags || 'null'}",
+                            categories: "${this.filters.categories || 'null'}",
                         }) {
                         id
                         subject
@@ -110,6 +112,8 @@ export default {
                         }
                     }
                 }`;
+
+                console.log('query',query)
 
             try {
                 const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
@@ -382,7 +386,7 @@ export default {
         }
     },
     template: `
-       <v-container fluid style="height: calc(100vh - 140px)">
+       <v-container fluid style="height: calc(100vh - 180px)">
         <!-- Data Table -->
         <v-data-table
             ref="mailDataTable"
@@ -394,6 +398,7 @@ export default {
             item-key="id"
             hide-default-footer
             :items-per-page="-1"
+            fixed-header
             density="comfortable"
         >
 

@@ -318,7 +318,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                             <!-- Content Column -->
                             <v-col :style="{ flexBasis: computedContentWidth + '%', maxWidth: computedContentWidth + '%' }" class="d-flex flex-column pa-0">
-                                <v-container>
+                                <v-container class="reduce-dt-spacing">
                                     <v-row>
                                         <v-col cols="12" sm="6" md="4">
                                            <vue-date-picker v-model="filterDate" range :max-date="new Date()" placeholder="Filter emails by date" :enable-time-picker="false" multi-calendars text-input @update:model-value="onDateChange"></vue-date-picker>
@@ -354,7 +354,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     </v-row>
                                     
                                     <v-row>
-                                        <v-col cols="12" sm="6" md="4">
+                                        <v-col cols="12" sm="6" md="3">
                                             <v-text-field
                                                 v-model="searchSubject"
                                                 @input="updateSearchSubject($event)"
@@ -368,7 +368,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                                 style="padding: 0;"
                                             ></v-text-field>
                                         </v-col>
-                                        <v-col cols="12" sm="6" md="4">
+                                        <v-col cols="12" sm="6" md="3">
                                             <v-select
                                                 label="Select Agent"
                                                 v-model="selectedFilterAgent"
@@ -400,6 +400,22 @@ document.addEventListener("DOMContentLoaded", function () {
                                                     </v-list-item>
                                                 </template>
                                             </v-select>
+                                        </v-col>
+                                        <v-col cols="12" sm="3" md="3">
+                                            <v-select
+                                            label="Filter By Tags"
+                                            v-model="filters.tags" 
+                                            density="compact"
+                                            :items="['With Tags', 'Without Tags']"
+                                            ></v-select>
+                                        </v-col>
+                                        <v-col cols="12" sm="3" md="3">
+                                            <v-select
+                                            label="Filter By Categories"
+                                            v-model="filters.categories" 
+                                            density="compact"
+                                            :items="['With Categories', 'Without Categories']"
+                                            ></v-select>
                                         </v-col>
                                     </v-row>
                                     

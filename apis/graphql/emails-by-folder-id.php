@@ -65,6 +65,14 @@ add_action('graphql_register_types', function () {
                 'type' => 'Int',
                 'description' => __('Agent ID to filter in Emails', 'your-text-domain'),
             ],
+            'tags' => [
+                'type' => 'String',
+                'description' => __('Filter by tags if assigned or not', 'your-text-domain'),
+            ],
+            'categories' => [
+                'type' => 'String',
+                'description' => __('Filter by categories if assigned or not', 'your-text-domain'),
+            ],
         ],
     ]);
 
@@ -188,9 +196,14 @@ add_action('graphql_register_types', function () {
             $query = "SELECT e.* FROM " . MAIL_INBOX_EMAILS_TABLE . " AS e";
         
             // If agentId filter is provided, join with the additional info table
-            if (!empty($args['filters']['agentId'])) {
+            if (!empty($args['filters']['agentId']) || !empty($args['filters']['tags'])) {
                 $query .= " LEFT JOIN " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . " AS ai ON e.id = ai.email_id";
             }
+
+            if (!empty($args['filters']['categories'])) {
+                $query .= " LEFT JOIN " . MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE . " AS em ON e.id = em.email_id";
+            }
+            
         
             // Initial WHERE clause for folder_id filter
             $query .= " WHERE e.folder_id = %d";
@@ -247,6 +260,31 @@ add_action('graphql_register_types', function () {
                         // Filter for cases where agent_id is NULL or 0
                         $query .= " AND (ai.agent_id IS NULL OR ai.agent_id = 0)";
                     } 
+                }
+        
+                // Agent ID filter
+                if (!empty($filters['tags'])) {
+                    $tagFilter = $filters['tags'];
+                    if ($tagFilter == 'With Tags') {
+                        // Only get records with a tag
+                        $query .= " AND ai.tag_id IS NOT NULL AND ai.tag_id > 0";
+                    } else if ($tagFilter == 'Without Tags') {
+                        // Only get records without a tag
+                        $query .= " AND (ai.tag_id IS NULL OR ai.tag_id = 0)";
+                    }
+                }
+
+                // Categories filter
+                if (!empty($filters['categories'])) {
+                    $categoryFilter = $filters['categories'];
+                    
+                    if ($categoryFilter == 'With Categories') {
+                        // Only get records with a category
+                        $query .= " AND em.category_id IS NOT NULL AND em.category_id > 0";
+                    } else if ($categoryFilter == 'Without Categories') {
+                        // Only get records without a category
+                        $query .= " AND (em.category_id IS NULL OR em.category_id = 0)";
+                    }
                 }
             }
         
