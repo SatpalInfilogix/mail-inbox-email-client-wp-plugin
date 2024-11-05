@@ -52,6 +52,10 @@ function mail_inbox_enqueue_scripts($hook) {
         [],
         '3.1.15'
     );
+
+    if ($hook !== 'toplevel_page_mail-inbox') {
+        return;
+    }
     
     // Enqueue vue2-daterange-picker
     wp_enqueue_script(
@@ -69,6 +73,4 @@ function mail_inbox_enqueue_scripts($hook) {
         [], 
         null
     );
-  
-    wp_localize_script( 'custom-ajax-script', 'ajax_object', array( 'ajax_url' => admin_url( 'admin-ajax.php' ) ) );
 }

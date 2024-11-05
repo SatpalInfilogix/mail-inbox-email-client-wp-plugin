@@ -243,12 +243,19 @@ function getNewEmails($accountId, $folder_id = ''){
 
     foreach ($emails['value'] as $email) {
         if ($email['hasAttachments']) {
-            $attachments_response = wp_remote_get(GRAPH_API_BASE_ENDPOINT . "messages/{$email['id']}/attachments", [
+            $attachments_response = wp_remote_get(GRAPH_API_BASE_ENDPOINT . "messages/{$email['id']}/attachments?\$select=id,name,contentBytes,contentType", [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
                     'Accept' => 'application/json',
-                ],
+                ]
             ]);
+
+            if ( is_wp_error( $attachments_response ) ) {
+                print_r($attachments_response);
+                die();
+                error_log('Failed after multiple attempts: ' . $attachments_response->get_error_message());
+                continue;
+            }
 
             $attachments = json_decode($attachments_response['body'], true);
             $email['attachments'] = $attachments['value'];
