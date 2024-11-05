@@ -351,7 +351,7 @@ export default {
                 <v-list-item-content>
                     <v-list-item-title class="text-subtitle-1">
                         <FullScreen />
-                        Mail Folders
+                        {{selectedAccount.email}}
                     </v-list-item-title>
                 </v-list-item-content>
             </v-list-item>

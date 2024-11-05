@@ -113,8 +113,6 @@ export default {
                     }
                 }`;
 
-                console.log('query',query)
-
             try {
                 const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
                     method: 'POST',
@@ -319,6 +317,18 @@ export default {
             this.currentEmailData = item;
             this.isAddTagDialogOpen = true;
         },
+        toggleSelectAll() {
+            this.selectAll = !this.selectAll;
+
+            this.loadedMails.forEach(email => {
+                email.selected = this.selectAll;
+            });
+        },
+        onCheckboxChange(email) {
+            if (!email.selected) {
+                this.selectAll = false; // Uncheck the header checkbox if any email is unchecked
+            }
+        },
         openAssignAgentDialog(item) {
             this.currentEmailData = item;
             this.isAssignAgentDialogOpen = true;
@@ -401,6 +411,12 @@ export default {
             fixed-header
             density="comfortable"
         >
+            <template v-slot:header.checkbox="{ header }">
+                <v-checkbox
+                    v-model="selectAll"
+                    @change="toggleSelectAll"
+                ></v-checkbox>
+            </template>
 
             <template v-slot:header.attachments="{ header }">
                 <v-icon small>mdi-paperclip</v-icon>
