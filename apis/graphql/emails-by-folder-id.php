@@ -189,7 +189,7 @@ add_action('graphql_register_types', function () {
         
             // If agentId filter is provided, join with the additional info table
             if (!empty($args['filters']['agentId'])) {
-                $query .= " INNER JOIN " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . " AS ai ON e.id = ai.email_id";
+                $query .= " LEFT JOIN " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . " AS ai ON e.id = ai.email_id";
             }
         
             // Initial WHERE clause for folder_id filter
@@ -238,8 +238,15 @@ add_action('graphql_register_types', function () {
         
                 // Agent ID filter
                 if (!empty($filters['agentId'])) {
-                    $query .= " AND ai.agent_id = %d";
-                    $query_params[] = intval($filters['agentId']);
+                    $agentId = $filters['agentId'];
+
+                    if($agentId > 0){
+                        $query .= " AND ai.agent_id = %d";
+                        $query_params[] = intval($agentId);
+                    } else if ($agentId === -1) {
+                        // Filter for cases where agent_id is NULL or 0
+                        $query .= " AND (ai.agent_id IS NULL OR ai.agent_id = 0)";
+                    } 
                 }
             }
         

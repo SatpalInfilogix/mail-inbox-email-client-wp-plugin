@@ -38,7 +38,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 searchSubject: '',
                 searchBody: '',
                 agents: [],
-                selectedAgent: '',
+                filterAgents: [],
+                selectedFilterAgent: null,
             };
         },
         computed: {
@@ -50,12 +51,6 @@ document.addEventListener("DOMContentLoaded", function () {
             },
         },
         components: { VueDatePicker },
-        watch: {
-            selectedAgent(newAgent) {
-                this.filters.agentId = newAgent;
-                //alert(this.filters.agentId);
-            }
-        },
         methods: {
             updateWidths(widths) {
                 this.sidebarWidth = widths.sidebarWidth;
@@ -67,6 +62,10 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             updateSearchSubject(e) {
                 this.filters.searchSubject = e.target.value;
+            },
+            updateSearchAgent(agent){
+                this.selectedFilterAgent = agent.props;
+                this.filters.agentId = agent.value;
             },
             updateSearchBody(e) {
                 this.filters.keyword = e.target.value;
@@ -91,6 +90,14 @@ document.addEventListener("DOMContentLoaded", function () {
     
                 const apiResponse = await response.json();
                 this.agents = apiResponse.data.mailInboxAgents;
+
+                let tempAgents = [{
+                    id: "-1",
+                    name: "Not Assigned"
+                }];
+                tempAgents.push(...apiResponse.data.mailInboxAgents);
+
+                this.filterAgents = tempAgents;
             },
             async viewEmail(emailId) {
                 const query = `
@@ -255,11 +262,20 @@ document.addEventListener("DOMContentLoaded", function () {
                     return new Date(date).toISOString().split('T')[0]; // Returns 'YYYY-MM-DD'
                 };
 
-                
-                this.filters.startDate = formatDate(newDateRange[0]);
-                this.filters.endDate = formatDate(newDateRange[1]);
+                if(newDateRange){
+                    this.filters.startDate = formatDate(newDateRange[0]);
+                    this.filters.endDate = formatDate(newDateRange[1]);
+                } else{
+                    this.filters.startDate = '';
+                    this.filters.endDate = '';
+                }
+
                 this.filterDate = newDateRange;
-            }
+            },
+            clearSelection() {
+                this.selectedFilterAgent = null;
+                this.filters.agentId = 0;
+            },
         },
         mounted(){
             this.setDefaultActiveFolder();
@@ -355,30 +371,32 @@ document.addEventListener("DOMContentLoaded", function () {
                                         <v-col cols="12" sm="6" md="4">
                                             <v-select
                                                 label="Select Agent"
-                                                v-model="selectedAgent"
-                                                :items="agents"
+                                                v-model="selectedFilterAgent"
+                                                :items="filterAgents"
                                                 item-text="name"
                                                 item-value="id"
                                                 return-object
-                                                dense
+                                                density="compact"
                                                 outlined
                                                 hide-details
                                                 >
                                                 <!-- Display Selected Tag as a Chip -->
                                                 <template v-slot:selection="{ item }">
-                                                    {{ item.raw.name }}
+                                                    {{ item.raw.title.name }}
+
+                                                    <v-icon @click.stop="clearSelection" class="position-absolute right-0">mdi-close</v-icon>
                                                 </template>
                                     
                                                 <!-- Display Each Dropdown Item with a Chip -->
                                                 <template v-slot:item="{ item, attrs }">
                                                     <v-list-item
-                                                    v-bind="attrs"
-                                                    :key="item.id"
-                                                    @click="handleSelect(item)"
-                                                    >
-                                                    <v-list-item-content>
-                                                        {{ item.raw.name }}
-                                                    </v-list-item-content>
+                                                        v-bind="attrs"
+                                                        :key="item.id"
+                                                        @click="updateSearchAgent(item)"
+                                                        >
+                                                        <v-list-item-content>
+                                                            {{ item.raw.name }}
+                                                        </v-list-item-content>
                                                     </v-list-item>
                                                 </template>
                                             </v-select>
