@@ -50,6 +50,15 @@ function mail_inbox_add_admin_menu() {
         'mail-inbox-settings',      // Menu slug
         'settings'                  // Function to display the page content
     );
+
+    add_submenu_page(
+        'mail-inbox',               // Parent slug
+        'KPI Rules',                 // Page title
+        'KPI Rules',                 // Menu title
+        'manage_options',           // Capability
+        'kpi-rules',                // Menu slug
+        'kpi_rules'                  // Function to display the page content
+    );
 }
 
 // Function to display the plugin page content
@@ -58,3 +67,4 @@ require_once MAIL_INBOX_PLUGIN_DIR.'views/manage-categories.php';
 require_once MAIL_INBOX_PLUGIN_DIR.'views/manage-tags.php';
 require_once MAIL_INBOX_PLUGIN_DIR.'views/connected-accounts.php';
 require_once MAIL_INBOX_PLUGIN_DIR.'views/settings.php';
+require_once MAIL_INBOX_PLUGIN_DIR.'views/kpi-rules.php';

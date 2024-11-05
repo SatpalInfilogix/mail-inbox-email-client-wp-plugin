@@ -3,7 +3,7 @@
 add_action('admin_enqueue_scripts', 'mail_inbox_enqueue_scripts');
 function mail_inbox_enqueue_scripts($hook) {
     // Ensure we only load the scripts on the Mail Inbox admin page
-    if ($hook !== 'toplevel_page_mail-inbox' && $hook !== 'mail-inbox_page_connected-accounts' && $hook !== 'mail-inbox_page_manage-categories' && $hook !== 'mail-inbox_page_manage-tags') {
+    if ($hook !== 'toplevel_page_mail-inbox' && $hook !== 'mail-inbox_page_connected-accounts' && $hook !== 'mail-inbox_page_manage-categories' && $hook !== 'mail-inbox_page_manage-tags' && $hook !== 'mail-inbox_page_kpi-rules') {
         return;
     }
 
@@ -52,14 +52,23 @@ function mail_inbox_enqueue_scripts($hook) {
         [],
         '3.1.15'
     );
+    
+    // Enqueue vue2-daterange-picker
+    wp_enqueue_script(
+        'vue-daterange-picker', 
+        MAIL_INBOX_PLUGIN_URL.'assets/js/libs/vue-datepicker.min.js', 
+        [], 
+        null, 
+        true
+    );
 
-      // Enqueue Moment.js (dependency for vue2-daterange-picker)
-      wp_enqueue_script('moment-js', 'https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js', [], null, true);
-      // Enqueue vue2-daterange-picker
-      wp_enqueue_script('vue-daterange-picker', 'https://unpkg.com/@vuepic/vue-datepicker@latest', [], null, true);
-      // Enqueue vue2-daterange-picker CSS
-      wp_enqueue_style('vue-daterange-picker-css', 'https://unpkg.com/@vuepic/vue-datepicker@latest/dist/main.css', [], null);
+    // Enqueue vue2-daterange-picker CSS
+    wp_enqueue_style(
+        'vue-daterange-picker-css', 
+        MAIL_INBOX_PLUGIN_URL.'assets/css/libs/vue-datepicker.min.css', 
+        [], 
+        null
+    );
   
-
     wp_localize_script( 'custom-ajax-script', 'ajax_object', array( 'ajax_url' => admin_url( 'admin-ajax.php' ) ) );
 }
