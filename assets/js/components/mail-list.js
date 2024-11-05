@@ -77,14 +77,9 @@ export default {
             if (this.loading || this.allLoaded || !this.activeFolder) return;
 
             this.loading = true;
-<<<<<<< HEAD
 
             const agentIdValue = this.filters.agentId ? parseInt(this.filters.agentId) : null;
 
-=======
-            console.log('filters',this.filters)
-            
->>>>>>> c795697a3cf3cd15477bca8efa7b931b0f552822
             const query = `
                 query {
                     getEmailsByFolderId(
@@ -93,14 +88,10 @@ export default {
                         filters: {
                             startDate: "${this.filters.startDate || ''}",
                             endDate: "${this.filters.endDate || ''}",
-<<<<<<< HEAD
                             keyword: "${this.filters.keyword || ''}",
                             searchFrom: "${this.filters.searchFrom || ''}",
                             searchSubject: "${this.filters.searchSubject || ''}",
                             agentId: ${agentIdValue !== null ? agentIdValue : 'null'},
-=======
-                            keyword: "${this.filters.keyword || ''}"
->>>>>>> c795697a3cf3cd15477bca8efa7b931b0f552822
                         }) {
                         id
                         subject
