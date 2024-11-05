@@ -12,6 +12,10 @@ export default {
             type: Object,
             required: true
         },
+        filters: {
+            type: Object,
+            default: {}
+        },
         activeFolder: {
             type: Object,
             required: true
@@ -19,6 +23,10 @@ export default {
         updatedEmailsCount: {
             type: Number,
             default: 0
+        },
+        agents: {
+            type: Array,
+            required: true
         }
     },
     data() {
@@ -48,7 +56,6 @@ export default {
             snackbarMessage: '',
             snackbarColor: 'success',
             tempSelectedEmail: {},
-            agents: []
         };
     },
     methods: {
@@ -62,18 +69,30 @@ export default {
             this.$emit('viewEmailIfPreviewOpened', row.id);
         },
         async loadEmails(offset = 0) {  
-            if(offset === 0){
+            if (offset === 0) {
                 this.loading = false;
                 this.allLoaded = false;
             }
 
-            if (this.loading || this.allLoaded || !this.activeFolder) return; // Prevent multiple loads or loading after all emails are loaded
-    
+            if (this.loading || this.allLoaded || !this.activeFolder) return;
+
             this.loading = true;
-            
+
+            const agentIdValue = this.filters.agentId ? parseInt(this.filters.agentId) : null;
+
             const query = `
                 query {
-                    getEmailsByFolderId(folder_id: ${this.activeFolder.id}, limit: 20, offset: ${offset}) {
+                    getEmailsByFolderId(
+                        folder_id: ${this.activeFolder.id}, 
+                        limit: 20, offset: ${offset}, 
+                        filters: {
+                            startDate: "${this.filters.startDate || ''}",
+                            endDate: "${this.filters.endDate || ''}",
+                            keyword: "${this.filters.keyword || ''}",
+                            searchFrom: "${this.filters.searchFrom || ''}",
+                            searchSubject: "${this.filters.searchSubject || ''}",
+                            agentId: ${agentIdValue !== null ? agentIdValue : 'null'},
+                        }) {
                         id
                         subject
                         received_datetime
@@ -91,7 +110,7 @@ export default {
                         }
                     }
                 }`;
-    
+
             try {
                 const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
                     method: 'POST',
@@ -100,47 +119,45 @@ export default {
                     },
                     body: JSON.stringify({ query })
                 });
-    
+
                 const apiResponse = await response.json();
-    
+
+                if (apiResponse.errors) {
+                    console.error('GraphQL Errors:', apiResponse.errors);
+                }
+
                 if (apiResponse.data.getEmailsByFolderId) {
                     const newEmails = apiResponse.data.getEmailsByFolderId.map(email => {
-                        email.additionalInfo = email.additionalInfo || {};
-    
-                        if (email.additionalInfo.tag_id) {
+                          // Ensure additionalInfo exists with necessary structure
+                          email.additionalInfo = email.additionalInfo || {};
+                        
+                          if (email.additionalInfo.tag_id) {
                             email.additionalInfo.tag = {
-                                id: email.additionalInfo.tag_id,
-                                name: email.additionalInfo.tag_name,
-                                fontColor: this.getTagProperty('fontColor', email.additionalInfo.tag_id),
-                                backgroundColor: this.getTagProperty('backgroundColor', email.additionalInfo.tag_id),
+                              id: email.additionalInfo.tag_id,
+                              name: email.additionalInfo.tag_name,
+                              fontColor: this.getTagProperty('fontColor', email.additionalInfo.tag_id),
+                              backgroundColor: this.getTagProperty('backgroundColor', email.additionalInfo.tag_id),
                             };
-                        } else {
-                            email.additionalInfo.tag_id = null;
-                        }
-    
-                        if (email.additionalInfo.agent_id) {
+                          }
+                        
+                          if (email.additionalInfo.agent_id) {
                             const associatedAgent = this.agents.find(agent => agent.id === email.additionalInfo.agent_id);
-
-                            if(associatedAgent){
-                                email.additionalInfo.agent = {
-                                    id: associatedAgent.id,
-                                    name: associatedAgent.name
-                                };
+                            if (associatedAgent) {
+                              email.additionalInfo.agent = {
+                                id: associatedAgent.id,
+                                name: associatedAgent.name
+                              };
                             }
-                        } else {
-                            email.additionalInfo.agent_id = null;
-                        }
-    
-                        return email;
-                    });
-    
+                          }
+                          return email;
+                        });
+
                     if (offset === 0) {
                         this.loadedMails = newEmails;
                     } else {
                         this.loadedMails = [...this.loadedMails, ...newEmails];
                     }
-                    
-                    // If fewer emails are returned than the limit, assume all emails are loaded
+
                     if (newEmails.length < 20) {
                         this.allLoaded = true;
                     }
@@ -169,40 +186,12 @@ export default {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    query: query
-                })
+                body: JSON.stringify({ query })
             });
 
             const apiResponse = await response.json();
             this.tags = apiResponse.data.mailInboxTags;
         },
-        
-        async fetchAgents() {
-            const query = `
-            query GetMailInboxAgents {
-                mailInboxAgents {
-                    id
-                    name
-                    email
-                }
-            }
-            `;
-
-            const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    query: query
-                })
-            });
-
-            const apiResponse = await response.json();
-            this.agents = apiResponse.data.mailInboxAgents;
-        },
-        
         async fetchCategories() {
             const query = `
             query {
@@ -217,9 +206,7 @@ export default {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    query: query
-                })
+                body: JSON.stringify({ query })
             });
 
             const apiResponse = await response.json();
@@ -282,16 +269,22 @@ export default {
                     email.additionalInfo.agent_id = agentId;
                     const assignedAgent = this.agents.find(agent => agent.id === agentId);
                     
-                    email.additionalInfo.agent = {
-                        id: assignedAgent.id,
-                        name: assignedAgent.name
-                    };
+                    if(assignedAgent){
+                        email.additionalInfo.agent = {
+                            id: assignedAgent.id,
+                            name: assignedAgent.name
+                        };
+                    } else {
+                        email.additionalInfo.agent = null;
+                    }
                 }
             } else {
-                this.showSnackbar(`Failed to assign tag`, 'error');
+                this.showSnackbar(`Failed to assign agent`, 'error');
             }
         },
         async handleEmailCategories(emailId, categoryId){
+            console.log('emailId',emailId)
+            console.log('categoryId',categoryId)
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'category_id', categoryId);
             if(apiResponse.success){
                 this.showSnackbar(`Category successfully assigned!`, 'success');
@@ -314,25 +307,24 @@ export default {
                 this.loadEmails(newOffset);
             }
         },
-        getTagProperty(property, tagId){
+        getTagProperty(property, tagId) {
             const tag = this.tags.find(tag => tag.id === tagId);
-
             return tag ? tag[property] : '#000';
         },
-        openAddTagDialog(emailData) {
-            this.currentEmailData = emailData;
+        openAddTagDialog(item) {
+            this.currentEmailData = item;
             this.isAddTagDialogOpen = true;
         },
-        openAssignAgentDialog(emailData) {
-            this.currentEmailData = emailData;
+        openAssignAgentDialog(item) {
+            this.currentEmailData = item;
             this.isAssignAgentDialogOpen = true;
         },
-        confirmUnassignTag(emailData){
-            this.currentEmailData = emailData;
+        confirmUnassignTag(item){
+            this.currentEmailData = item;
             this.showUnAssignTagModal = true;
         },
-        confirmUnassignAgent(emailData){
-            this.currentEmailData = emailData;
+        confirmUnassignAgent(item){
+            this.currentEmailData = item;
             this.showUnAssignAgentModal = true;
         },
         closeAddTagDialog() {
@@ -359,16 +351,20 @@ export default {
             },
             deep: true
         },
+        filters: {
+        handler() {
+                console.log('Filters updated:', this.filters);
+                this.loadEmails();  // Reload emails when filters change
+            },
+            deep: true
+        },
     },
     mounted() {
         this.fetchTags();
-        this.fetchAgents();
         this.fetchCategories();
         this.$nextTick(() => {
-            // Access the scroll container inside v-data-table
             const dataTable = this.$refs.mailDataTable;
             if (dataTable) {
-                // Vuetify's v-data-table uses a div with class 'v-data-table__wrapper' for scrolling
                 const scrollContainer = dataTable.$el.querySelector('.v-table__wrapper');
                 if (scrollContainer) {
                     scrollContainer.addEventListener('scroll', this.handleScroll);
@@ -377,7 +373,6 @@ export default {
         });
     },
     beforeDestroy() {
-        // Clean up the event listener
         const dataTable = this.$refs.mailDataTable;
         if (dataTable) {
             const scrollContainer = dataTable.$el.querySelector('.v-data-table__wrapper');
@@ -388,19 +383,19 @@ export default {
     },
     template: `
        <v-container fluid style="height: calc(100vh - 140px)">
-            <!-- Data Table -->
-            <v-data-table
-                ref="mailDataTable"
-                :headers="headers"
-                :items="loadedMails"
-                :search="search"
-                show-select
-                class="elevation-1 h-100 reduce-dt-spacing"
-                item-key="id"
-                hide-default-footer
-                :items-per-page="-1"
-                density="comfortable"
-            >
+        <!-- Data Table -->
+        <v-data-table
+            ref="mailDataTable"
+            :headers="headers"
+            :items="loadedMails"
+            :search="search"
+            show-select
+            class="elevation-1 h-100 reduce-dt-spacing"
+            item-key="id"
+            hide-default-footer
+            :items-per-page="-1"
+            density="comfortable"
+        >
 
             <template v-slot:header.attachments="{ header }">
                 <v-icon small>mdi-paperclip</v-icon>
@@ -416,18 +411,19 @@ export default {
                         ></v-checkbox>
                     </td>
 
+                    <!-- Updated Tag Template -->
                     <td>
                         <div style="width: 50px">
                             <v-chip
                                 :style="{
-                                    backgroundColor: getTagProperty('backgroundColor', item.additionalInfo.tag_id),
-                                    color: getTagProperty('fontColor', item.additionalInfo.tag_id)
+                                    backgroundColor: getTagProperty('backgroundColor', item.additionalInfo?.tag?.id),
+                                    color: getTagProperty('fontColor', item.additionalInfo?.tag?.id)
                                 }"
                                 size="small" 
-                                v-if="item.additionalInfo.tag_name"
+                                v-if="item.additionalInfo && item.additionalInfo.tag && item.additionalInfo.tag.name"
                                 @click="openAddTagDialog(item)"
                             >
-                                {{ item.additionalInfo.tag_name }}
+                                {{ item.additionalInfo.tag.name }}
                                 <v-icon
                                     small
                                     class="ml-2"
@@ -440,9 +436,10 @@ export default {
                         </div>
                     </td>
 
+                    <!-- Updated Agent Template -->
                     <td>
                         <div style="width: 85px">
-                            <v-chip size="small" v-if="item.additionalInfo.agent_id && item.additionalInfo.agent_id > 0" @click="openAssignAgentDialog(item)">
+                            <v-chip size="small" v-if="item.additionalInfo && item.additionalInfo.agent && item.additionalInfo.agent.name" @click="openAssignAgentDialog(item)">
                                 <span class="text-truncate" style="width: 46px">{{ item.additionalInfo.agent.name }}</span>
                                 <v-icon
                                     small
@@ -459,11 +456,11 @@ export default {
                     <td>
                         <div class="text-truncate" style="width: 140px;">
                             <span v-if="activeFolder.display_name==='Inbox'">
-                                {{ JSON.parse(item.sender) ? JSON.parse(item.sender).emailAddress.name : 'Unknown' }}<br>
-                                {{ JSON.parse(item.sender) ? JSON.parse(item.sender).emailAddress.address : 'Unknown' }}<br>
+                                {{ JSON.parse(item.sender)?.emailAddress?.name || 'Unknown' }}<br>
+                                {{ JSON.parse(item.sender)?.emailAddress?.address || 'Unknown' }}<br>
                             </span>
                             <span v-else>
-                                {{ JSON.parse(item.to_recipients)[0] ? JSON.parse(item.to_recipients)[0].emailAddress.name : 'Unknown' }}
+                                {{ JSON.parse(item.to_recipients)[0]?.emailAddress?.name || 'Unknown' }}
                             </span>
                         </div>
                     </td>
@@ -497,8 +494,8 @@ export default {
                             class="mt-2"
                             multiple
                         >
-                            <template v-slot:item="{ props, item }">
-                                <v-list-item v-bind="props" @click="handleEmailCategories(item.id, item.value)"></v-list-item>
+                            <template v-slot:item="{ props, item: categoryItem }">
+                                <v-list-item v-bind="props" @click="handleEmailCategories(item.id, categoryItem.value)"></v-list-item>
                             </template>
                             <template v-slot:selection="{ item, index }">
                                 <v-chip v-if="index < 2">
@@ -515,91 +512,10 @@ export default {
                     </td>
 
                     <td>{{ item.selectedTicket || 'N/A' }}</td>
-
                     <td>{{ item.selectedOrder || 'N/A' }}</td>
                 </tr>
             </template>
 
-            <template v-slot:item.tag="{ props, item: emailData }">
-                <v-chip
-                    :style="{
-                        backgroundColor: getTagProperty('backgroundColor', emailData.additionalInfo.tag_id),
-                        color: getTagProperty('fontColor', emailData.additionalInfo.tag_id)
-                    }"
-                    size="small" 
-                    v-if="emailData.additionalInfo.tag_name"
-                    @click="openAddTagDialog(emailData)"
-                >
-                    
-                    {{ emailData.additionalInfo.tag_name }}
-                    <v-icon
-                        small
-                        class="ml-2"
-                        @click.stop="confirmUnassignTag(emailData)">
-                        mdi-close
-                    </v-icon>
-                </v-chip>
-
-                <p class="text-decoration-none text-caption my-0" v-else @click="openAddTagDialog(emailData)">Add Tag</p>
-            </template>
-
-            <template v-slot:item.category="{ props, item: emailData }">
-                <v-select
-                label="Category"
-                v-model="emailData.categories"
-                :items="categories"
-                item-title="name"
-                item-value="id"
-                return-object
-                width="150px"
-                class="mt-2"
-                multiple
-                >
-                    <template v-slot:item="{ props, item }">
-                        <v-list-item v-bind="props" @click="handleEmailCategories(emailData.id, item.value)"></v-list-item>
-                    </template>
-                    <template v-slot:selection="{ item, index }">
-                        <v-chip v-if="index < 2">
-                            <span>{{ item.title }}</span>
-                        </v-chip>
-                        <span
-                            v-if="index === 2"
-                            class="text-grey text-caption align-self-center"
-                        >
-                            (+{{ emailData.additionalInfo.categories.length - 2 }} others)
-                        </span>
-                    </template>
-                </v-select>
-            </template>
-
-            <template v-slot:item.from="{ item }">
-                <div class="text-truncate" style="width: 200px;">
-                    {{ JSON.parse(item.to_recipients)[0] ? JSON.parse(item.to_recipients)[0].emailAddress.name : 'Unknown' }}
-                </div>
-            </template>
-
-            <template v-slot:item.subject="{ item }">
-                <div class="text-truncate" style="width: 200px;">
-                    {{ item.subject }}
-                </div>
-            </template>
-
-            <template v-slot:item.received_datetime="{ item }">
-                <div style="width: 128px;">
-                    <div class="text-caption"><v-icon class="text-grey-darken-2 me-1">mdi-calendar</v-icon>{{ item.received_datetime.split(' ')[0] }}</div>
-                    <div class="text-caption"><v-icon class="text-grey-darken-2 me-1">mdi-clock</v-icon>{{ item.received_datetime.split(' ')[1] }}</div>
-                </div>
-            </template>
-
-            <template v-slot:item.attachments="{ item }">
-                <v-chip
-                size="x-small"
-                color="primary"
-                text-color="white"
-                >
-                {{ tagId }} attachments
-                </v-chip>
-            </template>
         </v-data-table>
     </v-container>
 

@@ -54,7 +54,7 @@ export default {
             this.closeDialog();
           } catch (error) {
             console.error('Error assigning tag:', error);
-            this.$emit('error', 'Failed to assign tag.');
+            this.$emit('error', 'Failed to assign agent.');
           } finally {
             this.isLoading = false;
           }

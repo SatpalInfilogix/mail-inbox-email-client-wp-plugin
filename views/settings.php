@@ -63,7 +63,7 @@ function settings() {
                             <option value="">-- Select Role --</option>
                             <?php
                             foreach ($roles as $role_key => $role_data) {
-                                echo "<option value='" . esc_attr($role_data['name']) . "' " . ($agent_role == $role_data['name'] ? 'selected' : '') . ">" . esc_html($role_data['name']) . "</option>";
+                                echo "<option value='" . esc_attr($role_key) . "' " . ($agent_role == $role_data['name'] ? 'selected' : '') . ">" . esc_html($role_data['name']) . "</option>";
                             }
                             ?>
                         </select>

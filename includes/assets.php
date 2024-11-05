@@ -53,5 +53,13 @@ function mail_inbox_enqueue_scripts($hook) {
         '3.1.15'
     );
 
+      // Enqueue Moment.js (dependency for vue2-daterange-picker)
+      wp_enqueue_script('moment-js', 'https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js', [], null, true);
+      // Enqueue vue2-daterange-picker
+      wp_enqueue_script('vue-daterange-picker', 'https://unpkg.com/@vuepic/vue-datepicker@latest', [], null, true);
+      // Enqueue vue2-daterange-picker CSS
+      wp_enqueue_style('vue-daterange-picker-css', 'https://unpkg.com/@vuepic/vue-datepicker@latest/dist/main.css', [], null);
+  
+
     wp_localize_script( 'custom-ajax-script', 'ajax_object', array( 'ajax_url' => admin_url( 'admin-ajax.php' ) ) );
 }

@@ -67,3 +67,15 @@
 .email-preview-container .v-card-item__content{
     overflow-x: scroll!important;
 }
+
+.sticky-header .v-data-table__wrapper {
+    overflow-y: auto;
+    max-height: calc(100vh - 140px); /* Adjust this value based on your container height */
+}
+
+.sticky-header th {
+    position: sticky;
+    top: 0;
+    background: white; /* Background color for header */
+    z-index: 10; /* Ensure header stays on top */
+}
