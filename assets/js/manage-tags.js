@@ -115,7 +115,7 @@ document.addEventListener("DOMContentLoaded", function () {
             this.fetchTags();
         },
         template: `
-           <v-container fluid style="height: calc(100vh - 100px)">
+           <v-container fluid>
                 <div class="d-flex justify-space-between">
                     <v-skeleton-loader
                         v-if="loading"

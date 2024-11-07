@@ -150,7 +150,7 @@ function mail_inbox_activate_plugin() {
         INDEX idx_updated_at (updated_at)
     ) $charset_collate;";
 
-    // SQL statement to create the email additional info table without foreign key constraints
+    // SQL statement to create the email additional info table
     $sql_emails_additional_info = "CREATE TABLE " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . " (
         id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
         email_id BIGINT(20) UNSIGNED NOT NULL,
@@ -166,7 +166,7 @@ function mail_inbox_activate_plugin() {
         INDEX idx_updated_at (updated_at)
     ) $charset_collate;";
 
-    // SQL statement to create the email additional multiple info table without foreign key constraints
+    // SQL statement to create the email additional multiple info table
     $sql_emails_additional_multiple_info = "CREATE TABLE " . MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE . " (
         id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
         email_id BIGINT(20) UNSIGNED NOT NULL,
@@ -176,6 +176,24 @@ function mail_inbox_activate_plugin() {
         PRIMARY KEY (id),
         INDEX idx_email_id (email_id),
         INDEX idx_category_id (category_id),
+        INDEX idx_created_at (created_at),
+        INDEX idx_updated_at (updated_at)
+    ) $charset_collate;";
+
+    // SQL statement to create the kpi rules table
+    $sql_email_kpi_rules = "CREATE TABLE " . MAIL_INBOX_KPI_RULES_TABLE . " (
+        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        category_id BIGINT(20) UNSIGNED DEFAULT NULL,
+        tag_id BIGINT(20) UNSIGNED DEFAULT NULL,
+        default_points BIGINT(20) UNSIGNED DEFAULT NULL,
+        time BIGINT(20) UNSIGNED DEFAULT NULL,
+        points BIGINT(20) UNSIGNED DEFAULT NULL,
+        action_type VARCHAR(150) DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
+        PRIMARY KEY (id),
+        INDEX idx_category_id (category_id),
+        INDEX idx_tag_id (tag_id),
         INDEX idx_created_at (created_at),
         INDEX idx_updated_at (updated_at)
     ) $charset_collate;";
@@ -192,6 +210,7 @@ function mail_inbox_activate_plugin() {
     dbDelta($sql_tags);
     dbDelta($sql_emails_additional_info);
     dbDelta($sql_emails_additional_multiple_info);
+    dbDelta($sql_email_kpi_rules);
 
     // Function to check and add foreign key constraint
     function add_foreign_key($table_name, $constraint_name, $foreign_key, $reference_table, $reference_key) {

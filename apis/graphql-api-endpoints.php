@@ -9,3 +9,5 @@ include MAIL_INBOX_PLUGIN_DIR.'apis/graphql/delete-category.php';
 include MAIL_INBOX_PLUGIN_DIR.'apis/graphql/get-tags.php';
 include MAIL_INBOX_PLUGIN_DIR.'apis/graphql/delete-tag.php';
 include MAIL_INBOX_PLUGIN_DIR.'apis/graphql/get-agents.php';
+include MAIL_INBOX_PLUGIN_DIR.'apis/graphql/get-kpi-rules.php';
+include MAIL_INBOX_PLUGIN_DIR.'apis/graphql/delete-kpi-rule.php';

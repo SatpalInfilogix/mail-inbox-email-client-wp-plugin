@@ -8,7 +8,7 @@ function mail_inbox_add_admin_menu() {
     add_menu_page(
         'Mail Inbox',           // Page title
         'Mail Inbox',           // Menu title
-        'manage_options',       // Capability
+        'edit_posts',           // Capability
         'mail-inbox',           // Menu slug
         'mail_inbox_display',   // Function to display the page content
         'dashicons-email-alt',  // Icon for the menu

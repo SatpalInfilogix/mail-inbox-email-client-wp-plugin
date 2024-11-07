@@ -79,3 +79,7 @@
     background: white; /* Background color for header */
     z-index: 10; /* Ensure header stays on top */
 }
+
+.no-detail-spacing .v-input__details{
+    display: none;
+}
