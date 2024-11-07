@@ -51,3 +51,29 @@ function mail_inbox_decrypt($encrypted_text) {
 
     return openssl_decrypt($ciphertext, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
 }
+
+// Common logging function for the plugin
+function mail_inbox_log($message, $type = 'INFO') {
+  
+    $log_file = WP_CONTENT_DIR . '/mail-inbox.log'; 
+    $timestamp = date("Y-m-d H:i:s"); // Current timestamp
+    
+    // Format the log entry
+    $log_entry = "[{$timestamp}] [{$type}] - {$message}\n";
+    
+    // Append the log entry to the log file
+    file_put_contents($log_file, $log_entry, FILE_APPEND);
+}
+
+// Common error logging function for the plugin
+function mail_inbox_error_log($message, $type = 'INFO') {
+  
+    $log_file = WP_CONTENT_DIR . '/mail-inbox-error.log'; 
+    $timestamp = date("Y-m-d H:i:s"); // Current timestamp
+    
+    // Format the log entry
+    $log_entry = "[{$timestamp}] [{$type}] - {$message}\n";
+    
+    // Append the log entry to the log file
+    file_put_contents($log_file, $log_entry, FILE_APPEND);
+}

@@ -318,7 +318,7 @@ function getNewEmails($accountId, $folder_id = ''){
 
     foreach ($emails['value'] as $email) {
         if ($email['hasAttachments']) {
-            $attachments_response = wp_remote_get(GRAPH_API_BASE_ENDPOINT . "messages/{$email['id']}/attachments?\$select=id,name,contentBytes,contentType", [
+            $attachments_response = wp_remote_get(GRAPH_API_BASE_ENDPOINT . "messages/{$email['id']}/attachments", [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
                     'Accept' => 'application/json',
@@ -326,8 +326,6 @@ function getNewEmails($accountId, $folder_id = ''){
             ]);
 
             if ( is_wp_error( $attachments_response ) ) {
-                print_r($attachments_response);
-                die();
                 error_log('Failed after multiple attempts: ' . $attachments_response->get_error_message());
                 continue;
             }
@@ -367,7 +365,7 @@ function getNewEmails($accountId, $folder_id = ''){
                 $email['attachments'][$key]['saved_path'] = $localDir.'/'.$attachment['name'];
 
                 // Replace inline content ID with base64 data URI
-                if (isset($attachment['contentId']) && strpos($email['body']['content'], "cid:" . $attachment['contentId']) !== false) {
+                if (isset($attachment['contentId']) && isset($attachment['contentBytes']) && strpos($email['body']['content'], "cid:" . $attachment['contentId']) !== false) {
                     $base64Data = 'data:' . $attachment['contentType'] . ';base64,' . $attachment['contentBytes'];
                     $email['body']['content'] = str_replace("cid:" . $attachment['contentId'], $base64Data, $email['body']['content']);
                 }
