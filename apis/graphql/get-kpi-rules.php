@@ -31,6 +31,10 @@ add_action('graphql_register_types', function() {
                 'type' => 'String',
                 'description' => 'Action type of the KPI rule (e.g., Assign Tag, Assign Category)',
             ],
+            'points' => [
+                'type' => 'String',
+                'description' => 'Action type of the KPI rule (e.g., Assign Tag, Assign Category)',
+            ],
             'createdAt' => [
                 'type' => 'String',
                 'description' => 'Creation date of the KPI rule',
@@ -56,6 +60,7 @@ add_action('graphql_register_types', function() {
                     'categoryId' => $rule['category_id'],
                     'tagId' => $rule['tag_id'],
                     'actionType' => $rule['action_type'],
+                    'points' => $rule['points'],
                     'createdAt' => $rule['created_at'],
                 ];
             }, $results);

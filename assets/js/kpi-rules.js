@@ -1,4 +1,5 @@
 import AddKpiRule from './components/kpi-rules/add.js';
+import EditKpiRule from './components/kpi-rules/edit.js';
 
 document.addEventListener("DOMContentLoaded", function () {
     const { createApp } = Vue;
@@ -22,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     { title: 'Category', value: 'categoryId' },
                     { title: 'Tag', value: 'tagId' },
                     { title: 'Time', value: 'time' },
-                    { title: 'Action Type', value: 'actionType' },
+                    { title: 'Action Type', value: 'ruleActionType' },
                     { title: 'Points', value: 'points' },
                     { title: 'Actions', value: 'actions', sortable: false },
                 ],
@@ -33,7 +34,8 @@ document.addEventListener("DOMContentLoaded", function () {
             };
         },
         components: {
-            AddKpiRule
+            AddKpiRule,
+            EditKpiRule
         },
         methods: {
             async fetchData(query) {
@@ -86,7 +88,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             categoryId
                             tagId
                             actionType
-                            createdAt
+                            points
                         }
                     }`);
                 this.rules = data.kpiRules || [];
@@ -135,7 +137,9 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         },
         async mounted() {
-            await Promise.all([this.fetchCategories(), this.fetchTags(), this.fetchKPIRules()]);
+            await this.fetchCategories();
+            await this.fetchTags();
+            await this.fetchKPIRules();
         },
         template: `
         <v-container fluid class="pl-0" style="height: calc(100vh - 120px)">
@@ -164,6 +168,10 @@ document.addEventListener("DOMContentLoaded", function () {
                                 {{ categories.find(category => category.id == item.categoryId)?.name || 'N/A' }}
                             </v-chip>
                             </template>
+
+                            <template v-slot:item.ruleActionType="{ item }">
+                                {{ item.actionType || 'N/A' }}
+                            </template>
                             
                             <template v-slot:item.tagId="{ item }">
                                 <v-chip
@@ -174,7 +182,12 @@ document.addEventListener("DOMContentLoaded", function () {
                             </template>
 
                             <template v-slot:item.actions="{ item }">
-                                <EditRule :tag="item" @reloadTags="fetchTags" />
+                                <EditKpiRule :tags="tags"
+                                    :categories="categories"
+                                    :rule="item" 
+                                    @reloadRules="fetchKPIRules" 
+                                />
+                                
                                 <v-btn icon color="red" size="x-small" class="m-1" @click.stop="confirmDelete(item.id)">
                                     <v-icon>mdi-delete</v-icon>
                                 </v-btn>

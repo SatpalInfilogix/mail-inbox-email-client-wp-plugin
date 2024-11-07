@@ -1,6 +1,10 @@
 export default {
-    name: 'AddKpiRule',
+    name: 'EditKpiRule',
     props: {
+        rule: {
+            type: Object,
+            required: true
+        },
         categories: {
             type: Array,
             required: true
@@ -12,13 +16,13 @@ export default {
     },
     data() {
         return {
-            newRule: {
-                action: '',
-                category: '',
-                tag: '',
-                time: 0,
-                defaultPoints: 0,
-                points: 0,
+            editRule: {
+                action: this.rule.actionType,
+                category: this.categories.find(category => category.id == this.rule.categoryId) || null,
+                tag: this.tags.find(tag => tag.id == this.rule.tagId) || null,
+                time: this.rule.time,
+                defaultPoints: this.rule.defaultPoints,
+                points: this.rule.points,
                 timeType: 'Minutes'
             },
             dialog: false,
@@ -32,32 +36,33 @@ export default {
             if (event) event.preventDefault();
 
             // Custom validation for either category or tag
-            if (!this.newRule.category && !this.newRule.tag) {
+            if (!this.editRule.category && !this.editRule.tag) {
                 this.showSnackbar('Please select at least one: Category or Tag.', 'error');
                 return;
             }
 
 
-            if(this.newRule.category && this.newRule.tag && !this.newRule.action){
+            if(this.editRule.category && this.editRule.tag && !this.editRule.action){
                 this.showSnackbar('Please select action type to save this rule.', 'error');
                 return;
             }
             
-            const { valid } = await this.$refs.addRuleForm.validate()
+            const { valid } = await this.$refs.editRuleForm.validate()
 
             if (valid){
                 const formdata = new FormData();
-                const timeInMinutes = this.newRule.timeType === 'Hours' 
-                    ? this.newRule.time * 60 
-                    : this.newRule.time;
+                const timeInMinutes = this.editRule.timeType === 'Hours' 
+                    ? this.editRule.time * 60 
+                    : this.editRule.time;
 
-                formdata.append("action", "create_kpi_rule");
+                formdata.append("action", "update_kpi_rule");
+                formdata.append("id", this.rule.id);
                 formdata.append("time", timeInMinutes);
-                formdata.append("defaultPoints", this.newRule.defaultPoints);
-                formdata.append("category", this.newRule.category ? this.newRule.category.id : '');
-                formdata.append("tag", this.newRule.tag ? this.newRule.tag.id : '');
-                formdata.append("points", this.newRule.points);
-                formdata.append("actionType", this.newRule.action);
+                formdata.append("defaultPoints", this.editRule.defaultPoints);
+                formdata.append("category", this.editRule.category ? this.editRule.category.id : '');
+                formdata.append("tag", this.editRule.tag ? this.editRule.tag.id : '');
+                formdata.append("points", this.editRule.points);
+                formdata.append("actionType", this.editRule.action);
                 
                 const response = await fetch(ajaxurl, {
                     method: 'POST',
@@ -68,25 +73,12 @@ export default {
 
                 if(apiResponse.success){
                     this.dialog = false;
-                    this.resetForm();
                     this.$emit('reloadRules');
-                    this.showSnackbar('New rule added successfully!', 'success');
+                    this.showSnackbar('Rule updated successfully!', 'success');
                 } else {
-                    this.showSnackbar(apiResponse.data.message || 'Failed to add new rule.', 'error');
+                    this.showSnackbar(apiResponse.data.message || 'Failed to update rule.', 'error');
                 }
             }
-        },
-        resetForm() {
-            this.newRule = {
-                action: '',
-                category: '',
-                tag: '',
-                time: 0,
-                defaultPoints: 0,
-                points: 0,
-                timeType: 'Minutes'
-            };
-            this.$refs.addRuleForm.resetValidation();
         },
         showSnackbar(message, color = 'success') {
             this.snackbarMessage = message;
@@ -97,31 +89,27 @@ export default {
     template: `
         <v-dialog v-model="dialog" max-width="500">
             <template v-slot:activator="{ props: activatorProps }">
-                <v-btn
-                    v-bind="activatorProps"
-                    color="#5865f2"
-                    text="Add new rule"
-                    variant="flat"
-                    prepend-icon="mdi-plus"
-                ></v-btn>
+                <v-btn icon color="green" size="x-small" class="m-1" v-bind="activatorProps">
+                    <v-icon>mdi-pencil</v-icon>
+                </v-btn>
             </template>
 
             <template v-slot:default="{ isActive }">
-                <v-card title="Add new rule">
+                <v-card title="Edit rule">
                     <v-card-text>
-                        <v-form ref="addRuleForm" @keydown.enter="handleSubmit" class="form-inputs">
+                        <v-form ref="editRuleForm" @keydown.enter="handleSubmit" class="form-inputs">
                             <v-select
                                 label="Action Type"
-                                v-model="newRule.action" 
+                                v-model="editRule.action" 
                                 :items="['Assign Tag', 'Assign Category']"
-                                v-if="newRule.category && newRule.tag"
+                                v-if="editRule.category && editRule.tag"
                             ></v-select>  
                             
                             <v-row class="no-detail-spacing">
-                            <v-col cols="12" sm="6" md="6">
+                            <v-col cols="12" sm="6" md="6">                                
                                 <v-select
                                     label="Category"
-                                    v-model="newRule.category"
+                                    v-model="editRule.category"
                                     :items="categories"
                                     item-title="name"
                                     item-value="id"
@@ -139,7 +127,7 @@ export default {
                                             {{ item.raw.name }}
                                             <v-icon
                                                 small
-                                                @click.stop="newRule.category = null"
+                                                @click.stop="editRule.category = null"
                                                 class="ml-1"
                                             >
                                                 mdi-close
@@ -156,7 +144,7 @@ export default {
                             <v-col cols="12" sm="6" md="6">
                                 <v-select
                                     label="Tag"
-                                    v-model="newRule.tag"
+                                    v-model="editRule.tag"
                                     :items="tags"
                                     item-title="name"
                                     item-value="id"
@@ -175,7 +163,7 @@ export default {
 
                                             <v-icon
                                                 small
-                                                @click.stop="newRule.tag = null"
+                                                @click.stop="editRule.tag = null"
                                                 class="ml-1"
                                             >
                                                 mdi-close
@@ -194,7 +182,7 @@ export default {
                             <v-col cols="12" sm="4" md="4">
                                 <v-text-field 
                                 label="Time" 
-                                v-model="newRule.time" 
+                                v-model="editRule.time" 
                                 :rules="[
                                     v => !v || (!isNaN(parseFloat(v)) && isFinite(v)) || 'Time must be a valid number'
                                 ]"
@@ -206,7 +194,7 @@ export default {
                             <v-col cols="12" sm="4" md="4">
                                 <v-select
                                     label="Time Type"
-                                    v-model="newRule.timeType" 
+                                    v-model="editRule.timeType" 
                                     :items="['Minutes', 'Hours']"
                                 ></v-select>  
                             </v-col>
@@ -214,7 +202,7 @@ export default {
                             <v-col cols="12" sm="4" md="4">
                                 <v-text-field 
                                 label="Cred Points" 
-                                v-model="newRule.points" 
+                                v-model="editRule.points" 
                                 :rules="[
                                     v => !v || (!isNaN(parseFloat(v)) && isFinite(v)) || 'Points must be a valid number'
                                 ]"
@@ -226,7 +214,7 @@ export default {
                             
                             <v-text-field 
                                 label="Default Cred Points" 
-                                v-model="newRule.defaultPoints" 
+                                v-model="editRule.defaultPoints" 
                                 :rules="[
                                     v => !!v || 'Default Cred Points is required',
                                     v => Number.isInteger(Number(v)) || 'Default Cred Points must be a number'

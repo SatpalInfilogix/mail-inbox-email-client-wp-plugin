@@ -3,13 +3,13 @@ include plugin_dir_path(__FILE__).'includes/rest-api-functions.php';
 include plugin_dir_path(__FILE__).'includes/microsoft-api-functions.php';
 include plugin_dir_path(__FILE__).'rest/category.php';
 include plugin_dir_path(__FILE__).'rest/tag.php';
+include plugin_dir_path(__FILE__).'rest/rule.php';
 
 add_action('wp_ajax_get_account_auth_url', 'accountAuthUrl');
 add_action('wp_ajax_sync_email_folders', 'syncEmailFolders');
 add_action('wp_ajax_check_new_emails', 'checkNewEmails');
 add_action('wp_ajax_sync_emails', 'syncEmails');
 add_action('wp_ajax_associate_email_additional_information', 'associateEmailAdditionalInformation');
-add_action('wp_ajax_create_kpi_rule', 'createKPIRule');
 
 function accountAuthUrl(){
     $client_id_encrypted = get_option('mail_inbox_client_id', '');
@@ -188,53 +188,4 @@ function associateEmailAdditionalInformation(){
         'message' => 'Email additional information saved successfully!',
         'status' => $status
     ]);
-}
-
-function createKPIRule(){
-    $time = isset($_POST['email_id']) ? intval($_POST['time']) : 0;
-    $default_points = isset($_POST['defaultPoints']) ? intval($_POST['defaultPoints']) : 0;
-    $category_id = isset($_POST['category']) ? intval($_POST['category']) : 0;
-    $points = isset($_POST['points']) ? intval($_POST['points']) : 0;
-    $tag_id = isset($_POST['tag']) ? intval($_POST['tag']) : 0;
-    $action_type = sanitize_text_field($_POST['actionType']);
-
-    global $wpdb;
-    $table_name = MAIL_INBOX_KPI_RULES_TABLE;
-
-    // Check if a similar rule already exists based on name, category, tag, and action type
-    $existing_rule = $wpdb->get_row(
-        $wpdb->prepare(
-            "SELECT * FROM $table_name WHERE category_id = %d AND tag_id = %d AND action_type = %s",
-            $category_id,
-            $tag_id,
-            $action_type
-        )
-    );
-
-    if ($existing_rule) {
-        // Rule already exists, so return an error message
-        wp_send_json_error(['message' => 'This KPI rule already exists. Please modify the existing rule or create a different one.']);
-        return;
-    }
-
-    // Prepare data for insertion
-    $data = [
-        'time'           => $time,
-        'default_points' => $default_points,
-        'category_id'    => $category_id,
-        'tag_id'         => $tag_id,
-        'points'         => $points,
-        'action_type'    => $action_type,
-    ];
-
-
-    // Attempt to insert the new rule
-    $inserted = $wpdb->insert(MAIL_INBOX_KPI_RULES_TABLE, $data);
-
-    // Handle response
-    if ($inserted) {
-        wp_send_json_success(['message' => 'KPI rule successfully added']);
-    } else {
-        wp_send_json_error(['message' => 'Failed to add KPI rule. Please try again.']);
-    }
 }
