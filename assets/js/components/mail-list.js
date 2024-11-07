@@ -60,7 +60,7 @@ export default {
         };
     },
     methods: {
-        onRowClick(row) {
+        async onRowClick(row) {
             this.selectedEmailId = row.id;
             this.$emit('viewEmail', row.id);
         },

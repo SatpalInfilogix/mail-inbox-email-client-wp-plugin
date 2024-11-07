@@ -4,6 +4,7 @@ include plugin_dir_path(__FILE__).'includes/microsoft-api-functions.php';
 include plugin_dir_path(__FILE__).'rest/category.php';
 include plugin_dir_path(__FILE__).'rest/tag.php';
 include plugin_dir_path(__FILE__).'rest/rule.php';
+include plugin_dir_path(__FILE__).'rest/email.php';
 
 add_action('wp_ajax_get_account_auth_url', 'accountAuthUrl');
 add_action('wp_ajax_sync_email_folders', 'syncEmailFolders');

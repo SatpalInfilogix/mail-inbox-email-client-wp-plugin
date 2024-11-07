@@ -2,8 +2,6 @@
 add_action('wp_ajax_create_kpi_rule', 'createKPIRule');
 add_action('wp_ajax_update_kpi_rule', 'updateKPIRule');
 
-
-
 function createKPIRule(){
     $time = isset($_POST['time']) ? intval($_POST['time']) : 0;
     $default_points = isset($_POST['defaultPoints']) ? intval($_POST['defaultPoints']) : 0;

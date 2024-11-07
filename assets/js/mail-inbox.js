@@ -99,6 +99,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 this.filterAgents = tempAgents;
             },
+            async updateReadStatus(emailId, isRead = 1){
+                const formdata = new FormData();
+                formdata.append("action", "update_email_read_status");
+                formdata.append("email_id", emailId);
+                formdata.append("is_read", isRead);
+    
+                const response = await fetch(ajaxurl, {
+                    method: 'POST',
+                    body: formdata
+                });
+    
+                return await response.json();
+            },
             async viewEmail(emailId) {
                 const query = `
                     query {
@@ -147,6 +160,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 if(parseFloat(this.previewWidth) <= 43){
                     this.previewWidth = 43;
                 }
+
+                let readStatusResponse = this.updateReadStatus(emailId);
+                console.log('updateStatus', readStatusResponse)
                 
                 let calculatedContentWidth = this.contentWidth === this.previewWidth ? this.contentWidth : this.contentWidth - this.previewWidth;
 

@@ -200,6 +200,20 @@ function mail_inbox_activate_plugin() {
         INDEX idx_updated_at (updated_at)
     ) $charset_collate;";
 
+    // SQL statement to create an emails read status table
+    $sql_email_read_status = "CREATE TABLE " . MAIL_INBOX_EMAILS_READ_STATUS_TABLE . " (
+        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        email_id BIGINT(20) UNSIGNED DEFAULT NULL,
+        user_id BIGINT(20) UNSIGNED DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
+        PRIMARY KEY (id),
+        INDEX idx_email_id (email_id),
+        INDEX idx_user_id (user_id),
+        INDEX idx_created_at (created_at),
+        INDEX idx_updated_at (updated_at)
+    ) $charset_collate;";
+
     // Include the required file for dbDelta
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
@@ -213,6 +227,7 @@ function mail_inbox_activate_plugin() {
     dbDelta($sql_emails_additional_info);
     dbDelta($sql_emails_additional_multiple_info);
     dbDelta($sql_email_kpi_rules);
+    dbDelta($sql_email_read_status);
 
     // Function to check and add foreign key constraint
     function add_foreign_key($table_name, $constraint_name, $foreign_key, $reference_table, $reference_key) {
