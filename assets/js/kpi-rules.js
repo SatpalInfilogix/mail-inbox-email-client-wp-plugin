@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 snackbar: false,
                 snackbarMessage: '',
                 snackbarColor: 'success',
+                loading: true
             };
         },
         components: {
@@ -140,6 +141,7 @@ document.addEventListener("DOMContentLoaded", function () {
             await this.fetchCategories();
             await this.fetchTags();
             await this.fetchKPIRules();
+            this.loading = false;
         },
         template: `
         <v-container fluid class="pl-0" style="height: calc(100vh - 120px)">
@@ -153,49 +155,76 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
 
             <v-card class="mt-4" style="min-height: 400px">
-                    <v-card-text>
-                        <h1 class="text-h5 my-0">{{ rules.length }} existing rules</h1>
-                        <v-data-table
-                            :headers="headers"
-                            :items="rules"
-                            class="elevation-1 mt-4"
-                            item-key="id"
-                        >
-                            <template v-slot:item.categoryId="{ item }">
-                            <v-chip
-                                :style="{ backgroundColor: categories.find(category => category.id == item.categoryId)?.backgroundColor, color: categories.find(category => category.id == item.categoryId)?.fontColor, padding: '5px', borderRadius: '5px' }"
-                                size="small">
-                                {{ categories.find(category => category.id == item.categoryId)?.name || 'N/A' }}
+                <v-card-text>
+                    <v-skeleton-loader
+                        v-if="loading"
+                        type="text"
+                        class="text-h6 mb-3"
+                        style="width: 200px;" 
+                    ></v-skeleton-loader>
+                    <div v-else class="text-h6 mb-3">{{ rules.length }} existing rules</div>
+                    
+                    <v-data-table
+                        :headers="headers"
+                        :items="rules"
+                        class="elevation-1 mt-4"
+                        item-key="id"
+                    >
+                        <template v-slot:body v-if="loading">
+                            <tr v-for="i in 5" :key="i">
+                                <td><v-skeleton-loader type="text" width="40px"></v-skeleton-loader></td>
+                                <td><v-skeleton-loader type="text" width="60px"></v-skeleton-loader></td>
+                                <td><v-skeleton-loader type="text" width="100px"></v-skeleton-loader></td>
+                                <td><v-skeleton-loader type="text" width="100px"></v-skeleton-loader></td>
+                                <td><v-skeleton-loader type="text" width="100px"></v-skeleton-loader></td>
+                                <td><v-skeleton-loader type="text" width="100px"></v-skeleton-loader></td>
+                                <td><v-skeleton-loader type="text" width="50px"></v-skeleton-loader></td>
+                                <td><v-skeleton-loader type="text" width="80px"></v-skeleton-loader></td>
+                            </tr>
+                        </template>
+                        
+                        <template v-slot:item.categoryId="{ item }">
+                        <v-chip
+                            :style="{ backgroundColor: categories.find(category => category.id == item.categoryId)?.backgroundColor, color: categories.find(category => category.id == item.categoryId)?.fontColor, padding: '5px', borderRadius: '5px' }"
+                            size="small">
+                            {{ categories.find(category => category.id == item.categoryId)?.name || 'N/A' }}
                             </v-chip>
-                            </template>
+                        </template>
 
-                            <template v-slot:item.ruleActionType="{ item }">
-                                {{ item.actionType || 'N/A' }}
-                            </template>
+                        <template v-slot:item.ruleActionType="{ item }">
+                            {{ item.actionType || 'N/A' }}
+                        </template>
+
+                        <template v-slot:item.time="{ item }">
+                            <div v-if="item.time">
+                                {{ Math.floor(item.time / 60) > 0 ? Math.floor(item.time / 60) + ' hours ' : '' }}
+                                {{ item.time % 60 > 0 ? (item.time % 60) + ' minutes' : '' }}
+                            </div>
+                            <div v-else>N/A</div>
+                        </template>
+                        
+                        <template v-slot:item.tagId="{ item }">
+                            <v-chip
+                                :style="{ backgroundColor: tags.find(tag => tag.id == item.tagId)?.backgroundColor, color: tags.find(tag => tag.id == item.tagId)?.fontColor, padding: '5px', borderRadius: '5px' }"
+                                size="small">
+                                {{ tags.find(tag => tag.id == item.tagId)?.name || 'N/A' }}
+                            </v-chip>
+                        </template>
+
+                        <template v-slot:item.actions="{ item }">
+                            <EditKpiRule :tags="tags"
+                                :categories="categories"
+                                :rule="item" 
+                                @reloadRules="fetchKPIRules" 
+                            />
                             
-                            <template v-slot:item.tagId="{ item }">
-                                <v-chip
-                                    :style="{ backgroundColor: tags.find(tag => tag.id == item.tagId)?.backgroundColor, color: tags.find(tag => tag.id == item.tagId)?.fontColor, padding: '5px', borderRadius: '5px' }"
-                                    size="small">
-                                    {{ tags.find(tag => tag.id == item.tagId)?.name || 'N/A' }}
-                                </v-chip>
-                            </template>
-
-                            <template v-slot:item.actions="{ item }">
-                                <EditKpiRule :tags="tags"
-                                    :categories="categories"
-                                    :rule="item" 
-                                    @reloadRules="fetchKPIRules" 
-                                />
-                                
-                                <v-btn icon color="red" size="x-small" class="m-1" @click.stop="confirmDelete(item.id)">
-                                    <v-icon>mdi-delete</v-icon>
-                                </v-btn>
-                            </template>
-                        </v-data-table>
-                    </v-card-text>
-                </v-card>
-
+                            <v-btn icon color="red" size="x-small" class="m-1" @click.stop="confirmDelete(item.id)">
+                                <v-icon>mdi-delete</v-icon>
+                            </v-btn>
+                        </template>
+                    </v-data-table>
+                </v-card-text>
+            </v-card>
 
             <!-- Delete Confirmation Modal -->
             <v-dialog v-model="showDeleteModal" max-width="500">

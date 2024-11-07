@@ -20,10 +20,10 @@ export default {
                 action: this.rule.actionType,
                 category: this.categories.find(category => category.id == this.rule.categoryId) || null,
                 tag: this.tags.find(tag => tag.id == this.rule.tagId) || null,
-                time: this.rule.time,
+                time: this.rule.time % 60 === 0 ? this.rule.time / 60 : this.rule.time,
                 defaultPoints: this.rule.defaultPoints,
                 points: this.rule.points,
-                timeType: 'Minutes'
+                timeType: this.rule.time % 60 === 0 ? 'Hours' : 'Minutes'
             },
             dialog: false,
             snackbar: false,

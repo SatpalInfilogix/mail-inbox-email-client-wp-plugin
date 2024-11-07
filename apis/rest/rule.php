@@ -5,7 +5,7 @@ add_action('wp_ajax_update_kpi_rule', 'updateKPIRule');
 
 
 function createKPIRule(){
-    $time = isset($_POST['email_id']) ? intval($_POST['time']) : 0;
+    $time = isset($_POST['time']) ? intval($_POST['time']) : 0;
     $default_points = isset($_POST['defaultPoints']) ? intval($_POST['defaultPoints']) : 0;
     $category_id = isset($_POST['category']) ? intval($_POST['category']) : 0;
     $points = isset($_POST['points']) ? intval($_POST['points']) : 0;
