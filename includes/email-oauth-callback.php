@@ -130,7 +130,7 @@ function exchange_code_for_token($code) {
     // Retrieve settings
     $client_id_encrypted = get_option('mail_inbox_client_id', '');
     $client_secret_encrypted = get_option('mail_inbox_client_secret', '');
-    $redirect_uri = get_option('mail_inbox_redirect_uri', '');
+    $redirect_uri = home_url();
 
     $client_id     = !empty($client_id_encrypted) ? mail_inbox_decrypt($client_id_encrypted) : '';
     $client_secret = !empty($client_secret_encrypted) ? mail_inbox_decrypt($client_secret_encrypted) : '';

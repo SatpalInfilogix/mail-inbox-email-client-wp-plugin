@@ -13,7 +13,7 @@ add_action('wp_ajax_associate_email_additional_information', 'associateEmailAddi
 
 function accountAuthUrl(){
     $client_id_encrypted = get_option('mail_inbox_client_id', '');
-    $redirect_uri = get_option('mail_inbox_redirect_uri', '');
+    $redirect_uri = home_url();
     $client_id     = !empty($client_id_encrypted) ? mail_inbox_decrypt($client_id_encrypted) : '';
 
     $state = wp_generate_password(24, false);

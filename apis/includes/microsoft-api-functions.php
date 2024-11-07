@@ -1,4 +1,40 @@
 <?php
+function refresh_access_token($refreshToken)
+{
+    // Retrieve settings
+    $client_id_encrypted = get_option('mail_inbox_client_id', '');
+    $client_secret_encrypted = get_option('mail_inbox_client_secret', '');
+
+    $client_id     = !empty($client_id_encrypted) ? mail_inbox_decrypt($client_id_encrypted) : '';
+    $client_secret = !empty($client_secret_encrypted) ? mail_inbox_decrypt($client_secret_encrypted) : '';
+
+    $token_request_data = [
+        'client_id'     => $client_id,
+        'scope'         => MAIL_INBOX_SCOPES,
+        'refresh_token' => $refreshToken,
+        'grant_type'    => 'refresh_token',
+        'client_secret' => $client_secret,
+    ];
+
+    $response = wp_remote_post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
+        'body' => $token_request_data,
+    ]);
+
+    if (is_wp_error($response)) {
+        error_log('Token refresh error: ' . $response->get_error_message());
+        return false;
+    } else {
+        $body = json_decode($response['body'], true);
+        if (isset($body['access_token'])) {
+            return $body;
+        } else {
+            error_log('Token refresh response error: ' . $response['body']);
+            return false;
+        }
+    }
+}
+
+
 function getMicrosoftAccessToken($accountId)
 {
     global $wpdb;
@@ -6,9 +42,48 @@ function getMicrosoftAccessToken($accountId)
 
     // Execute the query and fetch the result
     $result = $wpdb->get_row($query);
+
+    // Decrypt tokens and get expiration time
     $accessToken = mail_inbox_decrypt($result->access_token);
+    $refreshToken = mail_inbox_decrypt($result->refresh_token);
+    $expiresIn = $result->expires_in;
+
+    // Check if the access token has expired
+    if (time() >= $expiresIn) {
+        // Access token has expired, refresh it
+        $newTokens = refresh_access_token($refreshToken);
+
+        if ($newTokens) {
+            // Update tokens in the database
+            $accessToken = sanitize_text_field($newTokens['access_token']);
+            $refreshToken = sanitize_text_field($newTokens['refresh_token']);
+            $expiresIn = time() + intval($newTokens['expires_in']);
+
+            $updated = $wpdb->update(
+                MAIL_INBOX_ACCOUNTS_TABLE,
+                [
+                    'access_token'  => mail_inbox_encrypt($accessToken),
+                    'refresh_token' => mail_inbox_encrypt($refreshToken),
+                    'expires_in'    => $expiresIn,
+                ],
+                ['id' => $accountId],
+                ['%s', '%s', '%d', '%s'],
+                ['%d']
+            );
+
+            if ($updated === false) {
+                error_log('Failed to update tokens for account ID: ' . $accountId);
+                return false;
+            }
+        } else {
+            error_log('Failed to refresh tokens for account ID: ' . $accountId);
+            return false;
+        }
+    }
+
     return $accessToken;
 }
+
 
 function getGraphMailFolders($accountId)
 {
