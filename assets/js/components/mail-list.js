@@ -56,6 +56,7 @@ export default {
             snackbarMessage: '',
             snackbarColor: 'success',
             tempSelectedEmail: {},
+            isSearching: false
         };
     },
     methods: {
@@ -123,6 +124,7 @@ export default {
                 });
 
                 const apiResponse = await response.json();
+                this.isSearching = false;
 
                 if (apiResponse.errors) {
                     console.error('GraphQL Errors:', apiResponse.errors);
@@ -285,8 +287,6 @@ export default {
             }
         },
         async handleEmailCategories(emailId, categoryId){
-            console.log('emailId',emailId)
-            console.log('categoryId',categoryId)
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'category_id', categoryId);
             if(apiResponse.success){
                 this.showSnackbar(`Category successfully assigned!`, 'success');
@@ -367,7 +367,7 @@ export default {
         },
         filters: {
             handler() {
-                console.log('Filters updated:', this.filters);
+                this.isSearching = true;
                 this.loadEmails();  // Reload emails when filters change
             },
             deep: true
@@ -398,6 +398,12 @@ export default {
     template: `
        <v-container fluid style="height: calc(100vh - 180px)">
         <!-- Data Table -->
+        <v-progress-linear
+            color="primary"
+            indeterminate
+            v-if="isSearching"
+        ></v-progress-linear>
+
         <v-data-table
             ref="mailDataTable"
             :headers="headers"
