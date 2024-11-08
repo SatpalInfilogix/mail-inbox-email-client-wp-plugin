@@ -3,7 +3,7 @@ add_action('wp_ajax_update_email_read_status', 'updateReadStatus');
 
 function updateReadStatus() {
     global $wpdb;
-    $table_name = $wpdb->prefix . 'mail_inbox_emails_read_status'; // Define your table name here
+    $table_name = MAIL_INBOX_EMAILS_READ_STATUS_TABLE;
     
     $email_id = isset($_POST['email_id']) ? intval($_POST['email_id']) : 0;
     $is_read = isset($_POST['is_read']) ? intval($_POST['is_read']) : 0;

@@ -20,6 +20,37 @@ function settings() {
         echo '<div class="updated"><p>Settings saved.</p></div>';
     }
 
+    if (isset($_POST['mail_inbox_clean_records'])) {
+        check_admin_referer('mail_inbox_clean_records_verify');
+
+        global $wpdb;
+
+        $tables = [
+            MAIL_INBOX_ACCOUNTS_TABLE,
+            MAIL_INBOX_FOLDERS_TABLE,
+            MAIL_INBOX_EMAILS_TABLE,
+            MAIL_INBOX_EMAILS_ATTACHMENTS_TABLE,
+            MAIL_INBOX_CATEGORIES_TABLE,
+            MAIL_INBOX_TAGS_TABLE,
+            MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE,
+            MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE,
+            MAIL_INBOX_KPI_RULES_TABLE,
+            MAIL_INBOX_EMAILS_READ_STATUS_TABLE,
+        ];
+
+        // Disable foreign key checks to avoid constraint errors during truncation
+        $wpdb->query("SET FOREIGN_KEY_CHECKS = 0;");
+
+        // Loop through each table and truncate it
+        foreach ($tables as $table) {
+            $wpdb->query("TRUNCATE TABLE $table;");
+        }
+
+        // Re-enable foreign key checks
+        $wpdb->query("SET FOREIGN_KEY_CHECKS = 1;");
+        echo '<div class="updated"><p>Plugin data have been cleaned.</p></div>';
+    }
+
     $client_id_encrypted = get_option('mail_inbox_client_id', '');
     $client_secret_encrypted = get_option('mail_inbox_client_secret', '');
     $agent_role = get_option('mail_inbox_agent_role', '');
@@ -64,6 +95,11 @@ function settings() {
                 </tr>
             </table>
             <?php submit_button('Save Settings', 'primary', 'mail_inbox_save_settings'); ?>
+        </form>
+
+        <form method="post" action="" style="margin-top: 20px;">
+            <?php wp_nonce_field('mail_inbox_clean_records_verify'); ?>
+            <p><input type="submit" name="mail_inbox_clean_records" class="button button-secondary" value="Clean Plugin Data" onclick="return confirm('Are you sure you want to delete all plugin data? This action cannot be undone.');" /></p>
         </form>
     </div>
     <?php

@@ -27,6 +27,8 @@ function remove_mail_inbox_cron_job() {
 
 // Define the cron job's functionality
 function mail_inbox_cron_job_function() {
+    die();
+    
     // Log the start of the cron job
     mail_inbox_log('Mail Inbox cron job executed every minute');
 
@@ -45,6 +47,7 @@ function mail_inbox_cron_job_function() {
 
 // Recursive function to fetch emails
 function fetchEmailsRecursively($accountId) {
+    
     // Check for new emails
     $newEmails = getNewEmailsCount($accountId, '');
 

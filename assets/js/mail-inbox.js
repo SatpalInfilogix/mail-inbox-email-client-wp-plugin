@@ -457,7 +457,9 @@ document.addEventListener("DOMContentLoaded", function () {
                                     :updatedEmailsCount="updatedEmailsCount"
                                     :filters="filters"
                                     :agents="agents"
+                                    :isPreviewOpened="showPreview"
                                     @view-email="viewEmail"
+                                    @updateReadStatus="updateReadStatus"
                                     @view-email-if-preview-opened="viewEmailIfPreviewOpened">
                                 </mail-list>
                             </v-col>

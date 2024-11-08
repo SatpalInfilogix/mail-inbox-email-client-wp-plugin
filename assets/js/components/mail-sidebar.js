@@ -359,7 +359,6 @@ export default {
 
             <template v-if="loading">
                 <v-skeleton-loader type="list-item" class="mb-4"></v-skeleton-loader>
-
                 <v-skeleton-loader type="list-item" v-for="n in 3" :key="n"></v-skeleton-loader>
             </template>
             <template v-else>

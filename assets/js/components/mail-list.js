@@ -16,6 +16,10 @@ export default {
             type: Object,
             default: {}
         },
+        isPreviewOpened: {
+            type: Boolean,
+            default: false
+        },
         activeFolder: {
             type: Object,
             required: true
@@ -33,7 +37,7 @@ export default {
         return {
             loadedMails: [],
             headers: [
-                { title: 'Tag', value: 'tag' },
+                { title: 'Status', value: 'tag' },
                 { title: 'Agent', value: 'agent' },
                 { title: 'From', value: 'from' },
                 { title: 'Subject', value: 'subject' },
@@ -55,18 +59,53 @@ export default {
             snackbar: false,
             snackbarMessage: '',
             snackbarColor: 'success',
+            rightClickSelectedEmail: {},
             tempSelectedEmail: {},
-            isSearching: false
+            isSearching: false,
+            menu: false,
+            menuX: 0,
+            menuY: 0,
         };
     },
     methods: {
+        showEmailRightClickMenu(event, email) {
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            this.menuX = event.clientX;
+            this.menuY = event.clientY + scrollTop;
+            console.log('email',email)
+            this.rightClickSelectedEmail = email;
+            this.menu = true;
+        },
+        updateMenuPosition() {
+            // Hide the menu when scrolling to avoid a fixed position issue
+            if (this.menu) {
+                this.menu = false;
+            }
+        },
+        handleRightClickAction(action, email) {
+            if(action==='mark as read'){
+                this.$emit('updateReadStatus', email.id, 1);
+                this.rightClickSelectedEmail.isRead = true;
+            } else if(action==='mark as unread'){
+                this.$emit('updateReadStatus', email.id, 0);
+                this.rightClickSelectedEmail.isRead = false;
+            }
+            
+            this.menu = false;
+        },
         async onRowClick(row) {
             this.selectedEmailId = row.id;
+            row.isRead = true;
             this.$emit('viewEmail', row.id);
         },
         selectRow(row) {
             this.tempSelectedEmail = row;
             this.selectedEmailId = row.id;
+
+            if(this.isPreviewOpened){
+                row.isRead = true;
+            }
+
             this.$emit('viewEmailIfPreviewOpened', row.id);
         },
         async loadEmails(offset = 0) {  
@@ -102,6 +141,7 @@ export default {
                         to_recipients
                         sender
                         has_attachments
+                        isRead
                         additionalInfo {
                             tag_id
                             tag_name
@@ -382,6 +422,7 @@ export default {
                 const scrollContainer = dataTable.$el.querySelector('.v-table__wrapper');
                 if (scrollContainer) {
                     scrollContainer.addEventListener('scroll', this.handleScroll);
+                    scrollContainer.addEventListener('scroll', this.updateMenuPosition);
                 }
             }
         });
@@ -392,6 +433,7 @@ export default {
             const scrollContainer = dataTable.$el.querySelector('.v-data-table__wrapper');
             if (scrollContainer) {
                 scrollContainer.removeEventListener('scroll', this.handleScroll);
+                scrollContainer.removeEventListener('scroll', this.updateMenuPosition);
             }
         }
     },
@@ -429,7 +471,7 @@ export default {
             </template>
 
             <template v-slot:item="{ item }">
-                <tr class="cursor-default" :class="{'bg-cyan-lighten-5': selectedEmailId === item.id, 'bg-amber-lighten-4' : tempSelectedEmail.id === item.id}" @click="selectRow(item)" @dblclick="onRowClick(item)">
+                <tr class="cursor-default" :class="{'bg-cyan-lighten-5': selectedEmailId === item.id, 'bg-amber-lighten-4' : tempSelectedEmail.id === item.id, 'font-weight-bold' : !item.isRead }" @click="selectRow(item)" @contextmenu.prevent="showEmailRightClickMenu($event, item)" @dblclick="onRowClick(item)">
                     <td>
                         <v-checkbox
                             v-model="item.selected"
@@ -461,7 +503,7 @@ export default {
 
                                 <v-tooltip activator="parent" location="top">{{ item.additionalInfo.tag.name }}</v-tooltip>
                             </v-chip>
-                            <p class="text-decoration-none text-caption my-0 cursor-pointer" v-else @click="openAddTagDialog(item)">Add Tag</p>
+                            <p class="text-decoration-none text-caption my-0 cursor-pointer" :class="{ 'font-weight-black' : !item.isRead }" v-else @click="openAddTagDialog(item)">Add Tag</p>
                         </div>
                     </td>
 
@@ -480,7 +522,7 @@ export default {
 
                                 <v-tooltip activator="parent" location="top">{{ item.additionalInfo.agent.name }}</v-tooltip>
                             </v-chip>
-                            <p class="text-decoration-none text-caption my-0 cursor-pointer" v-else @click="openAssignAgentDialog(item)">Assign Agent</p>
+                            <p class="text-decoration-none text-caption my-0 cursor-pointer" :class="{ 'font-weight-black' : !item.isRead }" v-else @click="openAssignAgentDialog(item)">Assign Agent</p>
                         </div>
                     </td>
 
@@ -515,8 +557,8 @@ export default {
 
                     <td>
                         <div style="width: 128px;">
-                            <div class="text-caption"><v-icon class="text-grey-darken-2 me-1">mdi-calendar</v-icon>{{ item.received_datetime.split(' ')[0] }}</div>
-                            <div class="text-caption"><v-icon class="text-grey-darken-2 me-1">mdi-clock</v-icon>{{ item.received_datetime.split(' ')[1] }}</div>
+                            <div class="text-caption" :class="{ 'font-weight-black' : !item.isRead }"><v-icon class="text-grey-darken-2 me-1">mdi-calendar</v-icon>{{ item.received_datetime.split(' ')[0] }}</div>
+                            <div class="text-caption" :class="{ 'font-weight-black' : !item.isRead }"><v-icon class="text-grey-darken-2 me-1">mdi-clock</v-icon>{{ item.received_datetime.split(' ')[1] }}</div>
                         </div>
                     </td>
 
@@ -560,6 +602,23 @@ export default {
 
         </v-data-table>
     </v-container>
+
+    <v-menu
+        v-model="menu"
+        :style="{ left: menuX + 'px', top: menuY + 'px' }"
+        absolute
+    >
+        <v-list class="text-grey-darken-3">
+            <v-list-item v-if="!rightClickSelectedEmail.isRead" @click="handleRightClickAction('mark as read', rightClickSelectedEmail)">
+                <v-icon left class="me-2">mdi-eye-outline</v-icon>
+                Mark as Read
+            </v-list-item>
+            <v-list-item v-if="rightClickSelectedEmail.isRead" @click="handleRightClickAction('mark as unread', rightClickSelectedEmail)">
+                <v-icon left class="me-2">mdi-eye-off-outline</v-icon>
+                Mark as Unread
+            </v-list-item>
+        </v-list>
+    </v-menu>
 
     <AssignTagDialog
         :visible="isAddTagDialogOpen"

@@ -51,7 +51,7 @@ export default {
         },
     },
     template: `
-        <v-container fluid>
+        <v-container fluid class="pt-0">
             <v-card class="mx-auto" max-width="800">
             <!-- Email Content -->
             <v-card-text style="overflow: auto; max-height: 80vh;">
@@ -164,8 +164,14 @@ export default {
             <!-- Actions -->
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn text color="primary">Reply</v-btn>
-                <v-btn text color="primary">Forward</v-btn>
+                <v-btn color="primary" variant="tonal">
+                    <v-icon left>mdi-reply</v-icon>
+                    Reply
+                </v-btn>
+                <v-btn color="primary" variant="tonal">
+                    <v-icon left>mdi-forward</v-icon>
+                    Forward
+                </v-btn>
             </v-card-actions>
             </v-card>
         </v-container>

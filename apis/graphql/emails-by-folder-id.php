@@ -76,6 +76,34 @@ add_action('graphql_register_types', function () {
         ],
     ]);
 
+    // Extend the Email type with is_read
+    register_graphql_field('Email', 'is_read', [
+        'type' => 'Boolean',
+        'description' => __('Whether the email is read by the logged-in user', 'your-text-domain'),
+        'resolve' => function ($email, $args, $context, $info) {
+            global $wpdb;
+
+            // Get the logged-in user ID
+            $user_id = get_current_user_id();
+
+            // If no user is logged in, return null for read status
+            if (!$user_id) {
+                return null;
+            }
+
+            // Check the read status in the mail_inbox_emails_is_read table
+            $table_name = MAIL_INBOX_EMAILS_READ_STATUS_TABLE;
+            $read_status = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM $table_name WHERE email_id = %d AND user_id = %d",
+                $email->id,
+                $user_id
+            ));
+
+            // Return true if a record exists (email is read), otherwise false (email is unread)
+            return $read_status > 0;
+        }
+    ]);
+
     // Register Email type with additionalInfo field
     register_graphql_object_type('Email', [
         'description' => __('An email entry', 'your-text-domain'),

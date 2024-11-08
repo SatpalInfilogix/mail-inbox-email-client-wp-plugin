@@ -74,7 +74,7 @@ function updateOrCreateEmail($account_id, $email)
 
         // Check if the folder exists in the table
         $existingEmail = $wpdb->get_row(
-            $wpdb->prepare("SELECT * FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE email_id = %s", $email_id)
+            $wpdb->prepare("SELECT * FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE received_datetime = %s AND sent_datetime = %s", $email['receivedDateTime'], $email['sentDateTime'])
         );
 
         // Prepare data for insert/update
@@ -110,7 +110,7 @@ function updateOrCreateEmail($account_id, $email)
         );
 
         // If email exists, update it; otherwise, insert a new row
-        /* if ($existingEmail) {
+        if ($existingEmail) {
             // Update existing email
             $result = $wpdb->update(
                 MAIL_INBOX_EMAILS_TABLE,
@@ -118,11 +118,13 @@ function updateOrCreateEmail($account_id, $email)
                 array('email_id' => $email_id)
             );
 
+            mail_inbox_error_log($email_id.' is already exist');
+
             // Error handling
             if ($result === false) {
-                error_log("Error updating email: " . $wpdb->last_error);
+                mail_inbox_error_log("Error updating email: " . $wpdb->last_error);
             }
-        } else { */
+        } else {  
             // Insert new email
             $result = $wpdb->insert(
                 MAIL_INBOX_EMAILS_TABLE,
@@ -155,12 +157,11 @@ function updateOrCreateEmail($account_id, $email)
 
                     // Error handling for attachments insertion
                     if ($attachment_result === false) {
-                        error_log("Failed to insert attachment for email ID {$saved_email_id}: " . $wpdb->last_error);
+                        mail_inbox_error_log("Failed to insert attachment for email ID {$saved_email_id}: " . $wpdb->last_error);
                     }
                 }
             }
-            
-        //}
+         } 
     } catch (Exception $e) {
         wp_send_json_error($e->getMessage(), 500);
     }
