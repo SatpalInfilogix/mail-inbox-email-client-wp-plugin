@@ -377,7 +377,7 @@ export default {
             }
         },
         async handleEmailUser(emailId, userId) {
-            const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
+            const userOrdersResponse = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -398,11 +398,35 @@ export default {
                 }),
             });
 
-            const ordersByUser = await response.json();
+            const ordersByUser = await userOrdersResponse.json();
             const email = this.loadedMails.find(mail => mail.id === emailId);
             if (email) {
                 email.orders = ordersByUser.data.ordersByUserId;
                 email.order = null;
+            }
+
+            const ticketsByUserResponse = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query: `
+                    query GetTicketsByUserId($userId: ID!) {
+                        ticketsByUserId(userId: $userId) {
+                            id
+                            title
+                        }
+                    }
+                  `,
+                    variables: { userId: userId },
+                }),
+            });
+
+            const ticketsByUser = await ticketsByUserResponse.json();
+            if (email) {
+                email.tickets = ticketsByUser.data.ticketsByUserId;
+                email.ticket = null;
             }
 
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'user_id', userId);
