@@ -110,7 +110,7 @@ function updateOrCreateEmail($account_id, $email)
         );
 
         // If email exists, update it; otherwise, insert a new row
-        if ($existingEmail) {
+        /* if ($existingEmail) {
             // Update existing email
             $result = $wpdb->update(
                 MAIL_INBOX_EMAILS_TABLE,
@@ -118,13 +118,11 @@ function updateOrCreateEmail($account_id, $email)
                 array('email_id' => $email_id)
             );
 
-            mail_inbox_error_log($email_id.' is already exist');
-
             // Error handling
             if ($result === false) {
                 mail_inbox_error_log("Error updating email: " . $wpdb->last_error);
             }
-        } else {  
+        } else {   */
             // Insert new email
             $result = $wpdb->insert(
                 MAIL_INBOX_EMAILS_TABLE,
@@ -161,7 +159,7 @@ function updateOrCreateEmail($account_id, $email)
                     }
                 }
             }
-         } 
+        /*  }  */
     } catch (Exception $e) {
         wp_send_json_error($e->getMessage(), 500);
     }

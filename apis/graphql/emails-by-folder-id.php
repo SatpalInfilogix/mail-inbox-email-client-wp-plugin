@@ -9,6 +9,9 @@ add_action('graphql_register_types', function () {
             'tag_id' => ['type' => 'ID', 'description' => __('The tag ID', 'your-text-domain')],
             'tag_name' => ['type' => 'String', 'description' => __('The name of the tag', 'your-text-domain')],
             'agent_id' => ['type' => 'ID', 'description' => __('The agent ID', 'your-text-domain')],
+            'user_id' => ['type' => 'ID', 'description' => __('User associated with this email', 'your-text-domain')],
+            'ticket_id' => ['type' => 'ID', 'description' => __('Ticket assigned to this email', 'your-text-domain')],
+            'order_id' => ['type' => 'ID', 'description' => __('Order associated with this email', 'your-text-domain')],
             'created_at' => ['type' => 'String', 'description' => __('The creation time of the record', 'your-text-domain')],
             'updated_at' => ['type' => 'String', 'description' => __('The last update time of the record', 'your-text-domain')],
         ],
@@ -102,6 +105,120 @@ add_action('graphql_register_types', function () {
             // Return true if a record exists (email is read), otherwise false (email is unread)
             return $read_status > 0;
         }
+    ]);
+
+     // Register UserInfo type for user details
+     register_graphql_object_type('UserInfo', [
+        'description' => __('Information about the user associated with an email', 'your-text-domain'),
+        'fields' => [
+            'id' => ['type' => 'ID', 'description' => __('The ID of the user', 'your-text-domain')],
+            'name' => ['type' => 'String', 'description' => __('The name of the user', 'your-text-domain')],
+            'email' => ['type' => 'String', 'description' => __('The email address of the user', 'your-text-domain')],
+            'role' => ['type' => 'String', 'description' => __('The role of the user', 'your-text-domain')],
+        ],
+    ]);
+    
+
+    // Extend Email type with user_info field
+    register_graphql_field('Email', 'user_info', [
+        'type' => 'UserInfo',
+        'description' => __('Information about the user associated with this email', 'your-text-domain'),
+        'resolve' => function ($email, $args, $context, $info) {
+            global $wpdb;
+            $table_name = MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE;
+
+            $associated_user = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM $table_name WHERE email_id = %d", $email->id));
+            if($associated_user->user_id){
+                $user = get_userdata($associated_user->user_id);
+            } else {
+                $email = json_decode($email->sender)->emailAddress->address;
+                $user = get_user_by('email', $email);    
+            }
+
+            if(!isset($user->data)){
+                return null;
+            }
+
+            // Return user details in the expected format
+            return [
+                'id' => $user->ID,
+                'name' => $user->display_name,
+                'email' => $user->user_email,
+                'role' => implode(', ', $user->roles),
+            ];
+        }
+    ]);
+
+     // Register Order type
+     register_graphql_object_type('Order', [
+        'description' => __('An order placed by a user', 'your-text-domain'),
+        'fields' => [
+            'id' => ['type' => 'ID', 'description' => __('The ID of the order', 'your-text-domain')],
+            'order_number' => ['type' => 'String', 'description' => __('The order number', 'your-text-domain')],
+            'total' => ['type' => 'Float', 'description' => __('The total amount of the order', 'your-text-domain')],
+            'date_created' => ['type' => 'String', 'description' => __('The date the order was created', 'your-text-domain')],
+            'status' => ['type' => 'String', 'description' => __('The status of the order', 'your-text-domain')],
+            'items' => [
+                'type' => ['list_of' => 'OrderItem'],
+                'description' => __('The items within the order', 'your-text-domain'),
+            ],
+        ],
+    ]);
+
+    // Register OrderItem type for individual items within an order
+    register_graphql_object_type('OrderItem', [
+        'description' => __('An item within an order', 'your-text-domain'),
+        'fields' => [
+            'name' => ['type' => 'String', 'description' => __('The name of the item', 'your-text-domain')],
+            'quantity' => ['type' => 'Int', 'description' => __('The quantity of the item ordered', 'your-text-domain')],
+            'total' => ['type' => 'Float', 'description' => __('The total price for this item', 'your-text-domain')],
+        ],
+    ]);
+
+    // Extend the Email type with an orders field to get orders by email
+    register_graphql_field('Email', 'orders', [
+        'type' => ['list_of' => 'Order'],
+        'description' => __('The last 5 orders associated with this email address', 'your-text-domain'),
+        'resolve' => function ($email, $args, $context, $info) {
+            global $wpdb;
+
+            // Decode and retrieve the sender email address from the Email type
+            $sender_email = json_decode($email->sender)->emailAddress->address;
+
+            if (empty($sender_email)) {
+                return []; // No email found in the Email record
+            }
+
+            $args = array(
+                'billing_email' => $sender_email, // Filter by email address
+                'limit'         => 5,     // Get all matching orders
+                'status'        => 'any',  // Retrieve orders of any status
+            );
+        
+            $orders = wc_get_orders($args);
+            if (empty($orders)) {
+                return [];
+            }
+
+            // Format orders for GraphQL response
+            return array_map(function ($order) {
+                $wc_order = wc_get_order($order->ID);
+                return [
+                    'id' => $wc_order->get_id(),
+                    'order_number' => $wc_order->get_order_number(),
+                    'total' => (float) $wc_order->get_total(),
+                    'date_created' => $wc_order->get_date_created()->date('Y-m-d H:i:s'),
+                    'status' => $wc_order->get_status(),
+                    'items' => array_map(function ($item) {
+                        return [
+                            'name' => $item->get_name(),
+                            'quantity' => $item->get_quantity(),
+                            'total' => (float) $item->get_total(),
+                        ];
+                    }, $wc_order->get_items()),
+                ];
+            }, $orders);
+        },
     ]);
 
     // Register Email type with additionalInfo field

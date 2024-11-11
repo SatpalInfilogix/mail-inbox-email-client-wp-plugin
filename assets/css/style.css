@@ -52,6 +52,11 @@
     display: none!important;
 }
 
+.v-autocomplete input{
+    display: block!important;
+}
+
+
 .reduce-dt-spacing th, .reduce-dt-spacing td{
     padding: 0 4px!important;
 }

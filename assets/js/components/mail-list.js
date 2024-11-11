@@ -65,6 +65,9 @@ export default {
             menu: false,
             menuX: 0,
             menuY: 0,
+            users: [],
+            search: '',
+            searchingUsers: false,
         };
     },
     methods: {
@@ -72,7 +75,7 @@ export default {
             const scrollTop = window.scrollY || document.documentElement.scrollTop;
             this.menuX = event.clientX;
             this.menuY = event.clientY + scrollTop;
-            console.log('email',email)
+            console.log('email', email)
             this.rightClickSelectedEmail = email;
             this.menu = true;
         },
@@ -83,14 +86,14 @@ export default {
             }
         },
         handleRightClickAction(action, email) {
-            if(action==='mark as read'){
+            if (action === 'mark as read') {
                 this.$emit('updateReadStatus', email.id, 1);
                 this.rightClickSelectedEmail.isRead = true;
-            } else if(action==='mark as unread'){
+            } else if (action === 'mark as unread') {
                 this.$emit('updateReadStatus', email.id, 0);
                 this.rightClickSelectedEmail.isRead = false;
             }
-            
+
             this.menu = false;
         },
         async onRowClick(row) {
@@ -102,13 +105,15 @@ export default {
             this.tempSelectedEmail = row;
             this.selectedEmailId = row.id;
 
-            if(this.isPreviewOpened){
+            if (this.isPreviewOpened) {
                 row.isRead = true;
             }
 
             this.$emit('viewEmailIfPreviewOpened', row.id);
         },
-        async loadEmails(offset = 0) {  
+        async loadEmails(offset = 0) {
+            this.$emit('loading', 'Loading emails...');
+
             if (offset === 0) {
                 this.loading = false;
                 this.allLoaded = false;
@@ -146,10 +151,22 @@ export default {
                             tag_id
                             tag_name
                             agent_id
+                            user_id
+                            order_id
+                            ticket_id
                         }
                         categories {
                             id
                             name
+                        }
+                        userInfo {
+                            id,
+                            name,
+                            email
+                        }
+                        orders {
+                            id
+                            order_number
                         }
                     }
                 }`;
@@ -165,6 +182,7 @@ export default {
 
                 const apiResponse = await response.json();
                 this.isSearching = false;
+                this.$emit('loading', '');
 
                 if (apiResponse.errors) {
                     console.error('GraphQL Errors:', apiResponse.errors);
@@ -172,29 +190,45 @@ export default {
 
                 if (apiResponse.data.getEmailsByFolderId) {
                     const newEmails = apiResponse.data.getEmailsByFolderId.map(email => {
-                          // Ensure additionalInfo exists with necessary structure
-                          email.additionalInfo = email.additionalInfo || {};
-                        
-                          if (email.additionalInfo.tag_id) {
+                        // Ensure additionalInfo exists with necessary structure
+                        email.additionalInfo = email.additionalInfo || {};
+
+                        if (email.additionalInfo.tag_id) {
                             email.additionalInfo.tag = {
-                              id: email.additionalInfo.tag_id,
-                              name: email.additionalInfo.tag_name,
-                              fontColor: this.getTagProperty('fontColor', email.additionalInfo.tag_id),
-                              backgroundColor: this.getTagProperty('backgroundColor', email.additionalInfo.tag_id),
+                                id: email.additionalInfo.tag_id,
+                                name: email.additionalInfo.tag_name,
+                                fontColor: this.getTagProperty('fontColor', email.additionalInfo.tag_id),
+                                backgroundColor: this.getTagProperty('backgroundColor', email.additionalInfo.tag_id),
                             };
-                          }
-                        
-                          if (email.additionalInfo.agent_id) {
+                        }
+
+                        if (email.additionalInfo.agent_id) {
                             const associatedAgent = this.agents.find(agent => agent.id === email.additionalInfo.agent_id);
                             if (associatedAgent) {
-                              email.additionalInfo.agent = {
-                                id: associatedAgent.id,
-                                name: associatedAgent.name
-                              };
+                                email.additionalInfo.agent = {
+                                    id: associatedAgent.id,
+                                    name: associatedAgent.name
+                                };
                             }
-                          }
-                          return email;
-                        });
+                        }
+
+                        if (email.userInfo && email.userInfo.id) {
+                            email.user = {
+                                id: email.userInfo.id,
+                                userId: email.userInfo.id,
+                                name: email.userInfo.name,
+                                email: email.userInfo.email,
+                            };
+                        }
+
+                        if (email.additionalInfo.order_id) {
+                            email.order = {
+                                id: email.additionalInfo.order_id,
+                                order_number: email.additionalInfo.order_id,
+                            };
+                        }
+                        return email;
+                    });
 
                     if (offset === 0) {
                         this.loadedMails = newEmails;
@@ -211,6 +245,7 @@ export default {
             } catch (error) {
                 console.error('Error loading emails:', error);
             } finally {
+                this.$emit('loading', '');
                 this.loading = false;
             }
         },
@@ -272,8 +307,8 @@ export default {
         },
         async handleEmailTag(emailId, tagId) {
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'tag_id', tagId);
-            if(apiResponse.success){
-                if(tagId){
+            if (apiResponse.success) {
+                if (tagId) {
                     this.showSnackbar(`Tag successfully assigned!`, 'success');
                 } else {
                     this.showSnackbar(`Tag unassigned successfully!`, 'success');
@@ -285,7 +320,7 @@ export default {
                     email.additionalInfo.tag_id = tagId;
                     const assignedTag = this.tags.find(tag => tag.id === tagId);
                     email.additionalInfo.tag_name = assignedTag ? assignedTag.name : '';
-                    
+
 
                     email.additionalInfo.tag = {
                         id: email.additionalInfo.tag_id,
@@ -300,8 +335,8 @@ export default {
         },
         async handleEmailAgent(emailId, agentId) {
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'agent_id', agentId);
-            if(apiResponse.success){
-                if(agentId){
+            if (apiResponse.success) {
+                if (agentId) {
                     this.showSnackbar(`Agent successfully assigned!`, 'success');
                 } else {
                     this.showSnackbar(`Agent unassigned successfully!`, 'success');
@@ -312,8 +347,8 @@ export default {
                 if (email) {
                     email.additionalInfo.agent_id = agentId;
                     const assignedAgent = this.agents.find(agent => agent.id === agentId);
-                    
-                    if(assignedAgent){
+
+                    if (assignedAgent) {
                         email.additionalInfo.agent = {
                             id: assignedAgent.id,
                             name: assignedAgent.name
@@ -326,9 +361,37 @@ export default {
                 this.showSnackbar(`Failed to assign agent`, 'error');
             }
         },
-        async handleEmailCategories(emailId, categoryId){
+        async handleEmailUser(emailId, userId) {
+            const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'user_id', userId);
+            if (apiResponse.success) {
+                if (userId) {
+                    this.showSnackbar(`User successfully assigned!`, 'success');
+                } else {
+                    this.showSnackbar(`User unassigned successfully!`, 'success');
+                }
+
+                // Update the local email data to reflect the new tag
+                /* const email = this.loadedMails.find(mail => mail.id === emailId);
+                if (email) {
+                    email.additionalInfo.user_id = userId;
+                    const assignedAgent = this.users.find(agent => agent.id === agentId);
+
+                    if (assignedAgent) {
+                        email.additionalInfo.agent = {
+                            id: assignedAgent.id,
+                            name: assignedAgent.name
+                        };
+                    } else {
+                        email.additionalInfo.agent = null;
+                    }
+                } */
+            } else {
+                this.showSnackbar(`Failed to assign agent`, 'error');
+            }
+        },
+        async handleEmailCategories(emailId, categoryId) {
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'category_id', categoryId);
-            if(apiResponse.success){
+            if (apiResponse.success) {
                 this.showSnackbar(`Category successfully assigned!`, 'success');
             } else {
                 this.showSnackbar(`Failed to assign category`, 'error');
@@ -339,13 +402,54 @@ export default {
             this.snackbarColor = color;
             this.snackbar = true;
         },
+        async fetchUsers(query) {
+            this.searchingUsers = true;
+            const graphqlQuery = `
+                query SearchUsers($search: String!) {
+                    users(where: { search: $search }, first: 10) {
+                        nodes {
+                            id
+                            userId
+                            name
+                            email
+                        }
+                    }
+                }
+            `;
+            const variables = { search: query };
+
+            try {
+                const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: graphqlQuery, variables }),
+                });
+
+                const result = await response.json();
+                this.users = result.data.users.nodes || [];
+            } catch (error) {
+                console.error('Error fetching users:', error);
+            } finally {
+                this.searchingUsers = false;
+            }
+        },
+        async handleOrderChange(emailId, orderId) {
+            const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'order_id', orderId);
+            if (apiResponse.success) {
+                this.showSnackbar(`Order successfully assigned!`, 'success');
+            } else {
+                this.showSnackbar(`Failed to assign order`, 'error');
+            }
+        },
         handleScroll(event) {
             const { scrollTop, scrollHeight, clientHeight } = event.target;
-    
+
             // Check if the user has scrolled near the bottom (with a 250px threshold)
             if (scrollTop + clientHeight >= scrollHeight - 250) {
                 const newOffset = this.loadedMails.length;
-    
+
                 this.loadEmails(newOffset);
             }
         },
@@ -373,26 +477,29 @@ export default {
             this.currentEmailData = item;
             this.isAssignAgentDialogOpen = true;
         },
-        confirmUnassignTag(item){
+        confirmUnassignTag(item) {
             this.currentEmailData = item;
             this.showUnAssignTagModal = true;
         },
-        confirmUnassignAgent(item){
+        confirmUnassignAgent(item) {
             this.currentEmailData = item;
             this.showUnAssignAgentModal = true;
         },
         closeAddTagDialog() {
-          this.isAddTagDialogOpen = false;
-          this.showUnAssignTagModal = false;
-          this.currentEmailData = null;
+            this.isAddTagDialogOpen = false;
+            this.showUnAssignTagModal = false;
+            this.currentEmailData = null;
         },
         closeAssignAgentDialog() {
-          this.isAssignAgentDialogOpen = false;
-          this.showUnAssignAgentModal = false;
-          this.currentEmailData = null;
+            this.isAssignAgentDialogOpen = false;
+            this.showUnAssignAgentModal = false;
+            this.currentEmailData = null;
         },
     },
     watch: {
+        search(val) {
+            this.fetchUsers(val);
+        },
         activeFolder: {
             handler() {
                 this.loadEmails();
@@ -416,6 +523,7 @@ export default {
     mounted() {
         this.fetchTags();
         this.fetchCategories();
+        this.fetchUsers('');
         this.$nextTick(() => {
             const dataTable = this.$refs.mailDataTable;
             if (dataTable) {
@@ -595,8 +703,52 @@ export default {
                         </v-select>
                     </td>
 
-                    <td>{{ item.selectedTicket || 'N/A' }}</td>
-                    <td>{{ item.selectedOrder || 'N/A' }}</td>
+                    <td>
+                        <div style="width: 150px">
+                            <v-autocomplete
+                                v-model="item.user"
+                                :items="item.user ? [item.user, ...users] : users"
+                                :loading="searchingUsers"
+                                :search-input.sync="search"
+                                item-title="name"
+                                item-value="userId"
+                                return-object
+                                no-data-text="No users found"
+                                hide-details
+                                solo
+                                label="User"
+                                @update:search="fetchUsers(search)"
+                                >
+                                <template v-slot:item="{ props, item: userItem }">
+                                    <v-list-item v-bind="props" @click="handleEmailUser(item.id, userItem.value)"></v-list-item>
+                                </template>
+
+                                <template v-slot:no-data>
+                                    <span v-if="searchingUsers">Searching...</span>
+                                    <span v-else>No users found</span>
+                                </template>
+                            </v-autocomplete>
+                            {{ item.selectedTicket || 'N/A' }}
+                        </div>
+                    </td>
+                    <td>
+                        <div style="width: 100px">
+                            <v-select
+                                :items="item.orders"
+                                return-object
+                                item-title="order_number"
+                                item-value="id"
+                                label="Select Order"
+                                outlined
+                                v-model="item.order"
+                                @change="handleOrderChange"
+                            >
+                                <template v-slot:item="{ props, item: orderItem }">
+                                    <v-list-item v-bind="props" @click="handleOrderChange(item.id, orderItem.value)"></v-list-item>
+                                </template>
+                            </v-select>
+                        </div>
+                    </td>
                 </tr>
             </template>
 

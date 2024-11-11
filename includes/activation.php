@@ -158,12 +158,18 @@ function mail_inbox_activate_plugin() {
         email_id BIGINT(20) UNSIGNED NOT NULL,
         tag_id BIGINT(20) UNSIGNED DEFAULT NULL,
         agent_id BIGINT(20) UNSIGNED DEFAULT NULL,
+        user_id BIGINT(20) UNSIGNED DEFAULT NULL,
+        ticket_id BIGINT(20) UNSIGNED DEFAULT NULL,
+        order_id BIGINT(20) UNSIGNED DEFAULT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
         PRIMARY KEY (id),
         INDEX idx_email_id (email_id),
         INDEX idx_tag_id (tag_id),
         INDEX idx_agent_id (agent_id),
+        INDEX idx_user_id (user_id),
+        INDEX idx_ticket_id (ticket_id),
+        INDEX idx_order_id (order_id),
         INDEX idx_created_at (created_at),
         INDEX idx_updated_at (updated_at)
     ) $charset_collate;";

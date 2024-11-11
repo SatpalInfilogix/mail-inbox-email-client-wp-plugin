@@ -162,7 +162,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 let readStatusResponse = this.updateReadStatus(emailId);
-                console.log('updateStatus', readStatusResponse)
                 
                 let calculatedContentWidth = this.contentWidth === this.previewWidth ? this.contentWidth : this.contentWidth - this.previewWidth;
 
@@ -271,6 +270,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 if(isEmailSynced > 0){
                     this.updatedEmailsCount++;
                 }
+            },
+            handleLoadingText(message){
+                this.loadingText = message;
             },
             onDateChange(newDateRange) {
                 const formatDate = (date) => {
@@ -460,7 +462,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                     :isPreviewOpened="showPreview"
                                     @view-email="viewEmail"
                                     @updateReadStatus="updateReadStatus"
-                                    @view-email-if-preview-opened="viewEmailIfPreviewOpened">
+                                    @view-email-if-preview-opened="viewEmailIfPreviewOpened"
+                                    @loading="handleLoadingText">
                                 </mail-list>
                             </v-col>
 
