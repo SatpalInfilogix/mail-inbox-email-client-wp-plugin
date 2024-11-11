@@ -66,7 +66,7 @@ export default {
             menuX: 0,
             menuY: 0,
             users: [],
-            search: '',
+            userSearch: '',
             searchingUsers: false,
         };
     },
@@ -321,7 +321,6 @@ export default {
                     const assignedTag = this.tags.find(tag => tag.id === tagId);
                     email.additionalInfo.tag_name = assignedTag ? assignedTag.name : '';
 
-
                     email.additionalInfo.tag = {
                         id: email.additionalInfo.tag_id,
                         name: email.additionalInfo.tag_name,
@@ -362,6 +361,34 @@ export default {
             }
         },
         async handleEmailUser(emailId, userId) {
+            const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query: `
+                    query GetOrdersByUserId($userId: Int!) {
+                        ordersByUserId(userId: $userId) {
+                            id
+                            order_number
+                            total
+                        }
+                    }
+                  `,
+                    variables: {
+                        userId: userId,
+                    },
+                }),
+            });
+
+            const ordersByUser = await response.json();
+            const email = this.loadedMails.find(mail => mail.id === emailId);
+            if (email) {
+                email.orders = ordersByUser.data.ordersByUserId;
+                email.order = null;
+            }
+
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'user_id', userId);
             if (apiResponse.success) {
                 if (userId) {
@@ -369,22 +396,6 @@ export default {
                 } else {
                     this.showSnackbar(`User unassigned successfully!`, 'success');
                 }
-
-                // Update the local email data to reflect the new tag
-                /* const email = this.loadedMails.find(mail => mail.id === emailId);
-                if (email) {
-                    email.additionalInfo.user_id = userId;
-                    const assignedAgent = this.users.find(agent => agent.id === agentId);
-
-                    if (assignedAgent) {
-                        email.additionalInfo.agent = {
-                            id: assignedAgent.id,
-                            name: assignedAgent.name
-                        };
-                    } else {
-                        email.additionalInfo.agent = null;
-                    }
-                } */
             } else {
                 this.showSnackbar(`Failed to assign agent`, 'error');
             }
@@ -402,7 +413,11 @@ export default {
             this.snackbarColor = color;
             this.snackbar = true;
         },
-        async fetchUsers(query) {
+        async fetchUsers(query, item) {
+            if (!query && this.users.length > 0 && query == item.user.name) {
+                return;
+            }
+
             this.searchingUsers = true;
             const graphqlQuery = `
                 query SearchUsers($search: String!) {
@@ -428,7 +443,12 @@ export default {
                 });
 
                 const result = await response.json();
-                this.users = result.data.users.nodes || [];
+
+                if (item) {
+                    item.users = result.data.users.nodes || [];
+                } else {
+                    this.users = result.data.users.nodes || [];
+                }
             } catch (error) {
                 console.error('Error fetching users:', error);
             } finally {
@@ -497,9 +517,6 @@ export default {
         },
     },
     watch: {
-        search(val) {
-            this.fetchUsers(val);
-        },
         activeFolder: {
             handler() {
                 this.loadEmails();
@@ -520,7 +537,7 @@ export default {
             deep: true
         },
     },
-    mounted() {
+    async mounted() {
         this.fetchTags();
         this.fetchCategories();
         this.fetchUsers('');
@@ -558,7 +575,7 @@ export default {
             ref="mailDataTable"
             :headers="headers"
             :items="loadedMails"
-            :search="search"
+            :search="userSearch"
             show-select
             class="elevation-1 h-100 reduce-dt-spacing"
             item-key="id"
@@ -707,7 +724,7 @@ export default {
                         <div style="width: 150px">
                             <v-autocomplete
                                 v-model="item.user"
-                                :items="item.user ? [item.user, ...users] : users"
+                                :items="item.users ? item.users : users"
                                 :loading="searchingUsers"
                                 :search-input.sync="search"
                                 item-title="name"
@@ -717,7 +734,7 @@ export default {
                                 hide-details
                                 solo
                                 label="User"
-                                @update:search="fetchUsers(search)"
+                                @update:search="fetchUsers($event, item)"
                                 >
                                 <template v-slot:item="{ props, item: userItem }">
                                     <v-list-item v-bind="props" @click="handleEmailUser(item.id, userItem.value)"></v-list-item>

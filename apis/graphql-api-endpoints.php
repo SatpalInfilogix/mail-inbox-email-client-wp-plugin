@@ -11,3 +11,4 @@ include MAIL_INBOX_PLUGIN_DIR.'apis/graphql/delete-tag.php';
 include MAIL_INBOX_PLUGIN_DIR.'apis/graphql/get-agents.php';
 include MAIL_INBOX_PLUGIN_DIR.'apis/graphql/get-kpi-rules.php';
 include MAIL_INBOX_PLUGIN_DIR.'apis/graphql/delete-kpi-rule.php';
+include MAIL_INBOX_PLUGIN_DIR.'apis/graphql/orders-by-user-id.php';

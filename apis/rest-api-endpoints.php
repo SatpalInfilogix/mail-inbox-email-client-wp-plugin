@@ -170,6 +170,19 @@ function associateEmailAdditionalInformation(){
             ['%d']
         );
 
+        if($column=='user_id'){
+            $wpdb->update(
+                $table_name,
+                [
+                    'order_id' => null,
+                    'ticket_id' => null
+                ],  
+                ['email_id' => $email_id],
+                ['%d', '%d'],
+                ['%d']
+            ); 
+        }
+
         $status = 'updated';
     } else {
         // Insert a new record if the email_id does not exist

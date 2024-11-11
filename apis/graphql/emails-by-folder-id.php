@@ -181,16 +181,20 @@ add_action('graphql_register_types', function () {
         'description' => __('The last 5 orders associated with this email address', 'your-text-domain'),
         'resolve' => function ($email, $args, $context, $info) {
             global $wpdb;
+            $table_name = MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE;
+            $associated_user = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM $table_name WHERE email_id = %d", $email->id));
 
-            // Decode and retrieve the sender email address from the Email type
-            $sender_email = json_decode($email->sender)->emailAddress->address;
-
-            if (empty($sender_email)) {
-                return []; // No email found in the Email record
+            if($associated_user->user_id && get_userdata($associated_user->user_id)->data){
+                $userEmail = get_userdata($associated_user->user_id)->data->user_email;
+            } else {
+                $userEmail = json_decode($email->sender)->emailAddress->address;
+                if (empty($userEmail)) {
+                    return []; // No email found in the Email record
+                }
             }
 
             $args = array(
-                'billing_email' => $sender_email, // Filter by email address
+                'billing_email' => $userEmail, // Filter by email address
                 'limit'         => 5,     // Get all matching orders
                 'status'        => 'any',  // Retrieve orders of any status
             );
