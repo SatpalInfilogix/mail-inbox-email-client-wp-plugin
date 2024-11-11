@@ -47,6 +47,7 @@ add_action('graphql_register_types', function () {
                         'total' => (float) $wc_order->get_total(),
                         'date_created' => $wc_order->get_date_created()->date('Y-m-d H:i:s'),
                         'status' => $wc_order->get_status(),
+                        'link' => $wc_order->get_view_order_url(),
                         'items' => array_map(function ($item) {
                             return [
                                 'name' => $item->get_name(),

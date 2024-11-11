@@ -11,7 +11,9 @@ add_action('graphql_register_types', function () {
             'agent_id' => ['type' => 'ID', 'description' => __('The agent ID', 'your-text-domain')],
             'user_id' => ['type' => 'ID', 'description' => __('User associated with this email', 'your-text-domain')],
             'ticket_id' => ['type' => 'ID', 'description' => __('Ticket assigned to this email', 'your-text-domain')],
+            'ticket_title' => ['type' => 'String', 'description' => __('Associated Ticket title with this email', 'your-text-domain')],
             'order_id' => ['type' => 'ID', 'description' => __('Order associated with this email', 'your-text-domain')],
+            'order_title' => ['type' => 'String', 'description' => __('Associated order title with this email', 'your-text-domain')],
             'created_at' => ['type' => 'String', 'description' => __('The creation time of the record', 'your-text-domain')],
             'updated_at' => ['type' => 'String', 'description' => __('The last update time of the record', 'your-text-domain')],
         ],
@@ -158,11 +160,70 @@ add_action('graphql_register_types', function () {
             'total' => ['type' => 'Float', 'description' => __('The total amount of the order', 'your-text-domain')],
             'date_created' => ['type' => 'String', 'description' => __('The date the order was created', 'your-text-domain')],
             'status' => ['type' => 'String', 'description' => __('The status of the order', 'your-text-domain')],
+            'link' => ['type' => 'String', 'description' => __('Edit link of the order', 'your-text-domain')],
             'items' => [
                 'type' => ['list_of' => 'OrderItem'],
                 'description' => __('The items within the order', 'your-text-domain'),
             ],
         ],
+    ]);
+
+    // Register Awesome Support Ticket type with link field
+    register_graphql_object_type('AwesomeSupportTicket', [
+        'description' => __('A support ticket from Awesome Support', 'your-text-domain'),
+        'fields' => [
+            'id' => ['type' => 'ID', 'description' => __('The ID of the ticket', 'your-text-domain')],
+            'title' => ['type' => 'String', 'description' => __('The title of the ticket', 'your-text-domain')],
+            'status' => ['type' => 'String', 'description' => __('The status of the ticket', 'your-text-domain')],
+            'priority' => ['type' => 'String', 'description' => __('The priority of the ticket', 'your-text-domain')],
+            'created_at' => ['type' => 'String', 'description' => __('The creation date of the ticket', 'your-text-domain')],
+            'updated_at' => ['type' => 'String', 'description' => __('The last update time of the ticket', 'your-text-domain')],
+            'link' => ['type' => 'String', 'description' => __('The link to view the ticket in Awesome Support', 'your-text-domain')],
+        ],
+    ]);
+
+     // Extend Email type with tickets field
+     register_graphql_field('Email', 'tickets', [
+        'type' => ['list_of' => 'AwesomeSupportTicket'],
+        'description' => __('Awesome Support tickets associated with the user of this email', 'your-text-domain'),
+        'resolve' => function ($email, $args, $context, $info) {
+            global $wpdb;
+
+            // Query the associated user ID from the additional info table
+            $table_name = MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE;
+            $associated_user = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM $table_name WHERE email_id = %d", $email->id));
+
+            // If no user ID is associated, return an empty array
+            if (empty($associated_user->user_id)) {
+                return [];
+            }
+
+            // Query tickets related to the user in Awesome Support
+            $tickets_query = $wpdb->prepare("
+                SELECT p.ID as id, p.post_title as title, p.post_date as created_at, p.post_modified as updated_at,
+                    (SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = p.ID AND meta_key = '_status') AS status,
+                    (SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = p.ID AND meta_key = '_priority') AS priority
+                FROM {$wpdb->posts} AS p
+                WHERE p.post_type = 'ticket' AND p.post_author = %d
+                ORDER BY p.post_date DESC
+                LIMIT 5
+            ", $associated_user->user_id);
+
+            $tickets = $wpdb->get_results($tickets_query);
+
+            // Format the ticket data as expected in GraphQL response
+            return array_map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'title' => $ticket->title,
+                    'status' => $ticket->status,
+                    'priority' => $ticket->priority,
+                    'created_at' => $ticket->created_at,
+                    'updated_at' => $ticket->updated_at,
+                    'link' => get_edit_post_link($ticket->id)
+                ];
+            }, $tickets);
+        }
     ]);
 
     // Register OrderItem type for individual items within an order
@@ -213,6 +274,7 @@ add_action('graphql_register_types', function () {
                     'total' => (float) $wc_order->get_total(),
                     'date_created' => $wc_order->get_date_created()->date('Y-m-d H:i:s'),
                     'status' => $wc_order->get_status(),
+                    'link' => $wc_order->get_view_order_url(),
                     'items' => array_map(function ($item) {
                         return [
                             'name' => $item->get_name(),
@@ -272,7 +334,34 @@ add_action('graphql_register_types', function () {
                     ";
                     $prepared_query = $wpdb->prepare($query, intval($email->id));
                     $additional_info = $wpdb->get_row($prepared_query);
-                    return $additional_info;
+
+                    $ticketTitle = '';
+                    if (get_post_type($additional_info->ticket_id) === 'ticket') {
+                        $ticketTitle = get_the_title($additional_info->ticket_id);
+                    }
+
+                    $orderTitle = '';
+                    if (wc_get_order($additional_info->order_id)) {
+                        $order = wc_get_order($additional_info->order_id);
+                        if ($order) {
+                            $orderTitle = $order->get_order_number();
+                        } 
+                    }
+                    
+                    return [
+                        'id' => $additional_info->id,
+                        'email_id' => $additional_info->email_id,
+                        'tag_id' => $additional_info->tag_id,
+                        'tag_name' => $additional_info->tag_name,
+                        'agent_id' => $additional_info->agent_id,
+                        'user_id' => $additional_info->user_id,
+                        'ticket_id' => $additional_info->ticket_id,
+                        'ticket_title' => $ticketTitle,
+                        'order_id' => $additional_info->order_id,
+                        'order_title' => $orderTitle,
+                        'created_at' => $additional_info->created_at,
+                        'updated_at' => $additional_info->updated_at,
+                    ];
                 }
             ],
             'categories' => [
@@ -304,6 +393,25 @@ add_action('graphql_register_types', function () {
                     return $wpdb->get_results($prepared_query);
                 },
             ],
+            'orderLink' => [
+                'type' => 'String',
+                'description' => __('Order link of email', 'your-text-domain'),
+                'resolve' => function ($email, $args, $context, $info) {
+                    global $wpdb;
+                    $query = "
+                        SELECT order_id
+                        FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . "
+                        WHERE email_id = %d
+                    ";
+                    $prepared_query = $wpdb->prepare($query, intval($email->id));
+                    $orderId = $wpdb->get_row($prepared_query)->order_id;
+                    if(!$orderId){
+                        return '';   
+                    }
+
+                    return admin_url('post.php?post=' . $orderId . '&action=edit');
+                }
+            ]
         ],
     ]);
 

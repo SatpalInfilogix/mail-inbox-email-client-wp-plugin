@@ -147,13 +147,16 @@ export default {
                         sender
                         has_attachments
                         isRead
+                        orderLink
                         additionalInfo {
                             tag_id
                             tag_name
                             agent_id
                             user_id
                             order_id
+                            order_title
                             ticket_id
+                            ticket_title
                         }
                         categories {
                             id
@@ -167,6 +170,12 @@ export default {
                         orders {
                             id
                             order_number
+                            link
+                        }
+                        tickets {
+                            id
+                            title
+                            link
                         }
                     }
                 }`;
@@ -224,7 +233,14 @@ export default {
                         if (email.additionalInfo.order_id) {
                             email.order = {
                                 id: email.additionalInfo.order_id,
-                                order_number: email.additionalInfo.order_id,
+                                order_number: email.additionalInfo.order_title,
+                            };
+                        }
+
+                        if (email.additionalInfo.ticket_id) {
+                            email.ticket = {
+                                id: email.additionalInfo.ticket_id,
+                                title: email.additionalInfo.ticket_title,
                             };
                         }
                         return email;
@@ -461,6 +477,14 @@ export default {
                 this.showSnackbar(`Order successfully assigned!`, 'success');
             } else {
                 this.showSnackbar(`Failed to assign order`, 'error');
+            }
+        },
+        async handleTicketChange(emailId, ticketId) {
+            const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'ticket_id', ticketId);
+            if (apiResponse.success) {
+                this.showSnackbar(`Ticket successfully assigned!`, 'success');
+            } else {
+                this.showSnackbar(`Failed to assign ticket`, 'error');
             }
         },
         handleScroll(event) {
@@ -745,7 +769,20 @@ export default {
                                     <span v-else>No users found</span>
                                 </template>
                             </v-autocomplete>
-                            {{ item.selectedTicket || 'N/A' }}
+                            
+                            <v-select
+                                :items="item.tickets"
+                                return-object
+                                item-title="title"
+                                item-value="id"
+                                label="Ticket"
+                                outlined
+                                v-model="item.ticket"
+                            >
+                                <template v-slot:item="{ props, item: ticketItem }">
+                                    <v-list-item v-bind="props" @click="handleTicketChange(item.id, ticketItem.value)"></v-list-item>
+                                </template>
+                            </v-select>
                         </div>
                     </td>
                     <td>
@@ -755,10 +792,9 @@ export default {
                                 return-object
                                 item-title="order_number"
                                 item-value="id"
-                                label="Select Order"
+                                label="Order"
                                 outlined
                                 v-model="item.order"
-                                @change="handleOrderChange"
                             >
                                 <template v-slot:item="{ props, item: orderItem }">
                                     <v-list-item v-bind="props" @click="handleOrderChange(item.id, orderItem.value)"></v-list-item>
