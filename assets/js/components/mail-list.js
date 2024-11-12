@@ -148,6 +148,7 @@ export default {
                         has_attachments
                         isRead
                         orderLink
+                        ticketLink
                         additionalInfo {
                             tag_id
                             tag_name
@@ -170,12 +171,10 @@ export default {
                         orders {
                             id
                             order_number
-                            link
                         }
                         tickets {
                             id
                             title
-                            link
                         }
                     }
                 }`;
@@ -264,6 +263,9 @@ export default {
                 this.$emit('loading', '');
                 this.loading = false;
             }
+        },
+        editPostLink(id){
+            return `${window.mailInbox.adminUrl}post.php?post=${id}&action=edit`;
         },
         async fetchTags() {
             const query = `
@@ -403,6 +405,7 @@ export default {
             if (email) {
                 email.orders = ordersByUser.data.ordersByUserId;
                 email.order = null;
+                email.orderLink = ``;
             }
 
             const ticketsByUserResponse = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
@@ -427,6 +430,7 @@ export default {
             if (email) {
                 email.tickets = ticketsByUser.data.ticketsByUserId;
                 email.ticket = null;
+                email.ticketLink = ``;
             }
 
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'user_id', userId);
@@ -498,6 +502,9 @@ export default {
         async handleOrderChange(emailId, orderId) {
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'order_id', orderId);
             if (apiResponse.success) {
+                const email = this.loadedMails.find(mail => mail.id === emailId);
+                email.orderLink = this.editPostLink(orderId);
+
                 this.showSnackbar(`Order successfully assigned!`, 'success');
             } else {
                 this.showSnackbar(`Failed to assign order`, 'error');
@@ -506,6 +513,9 @@ export default {
         async handleTicketChange(emailId, ticketId) {
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'ticket_id', ticketId);
             if (apiResponse.success) {
+                const email = this.loadedMails.find(mail => mail.id === emailId);
+                email.ticketLink = this.editPostLink(ticketId);
+                
                 this.showSnackbar(`Ticket successfully assigned!`, 'success');
             } else {
                 this.showSnackbar(`Failed to assign ticket`, 'error');
@@ -807,6 +817,8 @@ export default {
                                     <v-list-item v-bind="props" @click="handleTicketChange(item.id, ticketItem.value)"></v-list-item>
                                 </template>
                             </v-select>
+
+                            <a :href="item.ticketLink" v-if="item.ticketLink" target="_blank">View Ticket</a>
                         </div>
                     </td>
                     <td>
@@ -824,6 +836,7 @@ export default {
                                     <v-list-item v-bind="props" @click="handleOrderChange(item.id, orderItem.value)"></v-list-item>
                                 </template>
                             </v-select>
+                            <a :href="item.orderLink" v-if="item.orderLink" target="_blank">View Order</a>
                         </div>
                     </td>
                 </tr>

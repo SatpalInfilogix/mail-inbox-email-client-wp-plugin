@@ -411,6 +411,25 @@ add_action('graphql_register_types', function () {
 
                     return admin_url('post.php?post=' . $orderId . '&action=edit');
                 }
+            ],
+            'ticketLink' => [
+                'type' => 'String',
+                'description' => __('Attached ticket link', 'your-text-domain'),
+                'resolve' => function ($email, $args, $context, $info) {
+                    global $wpdb;
+                    $query = "
+                        SELECT ticket_id
+                        FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . "
+                        WHERE email_id = %d
+                    ";
+                    $prepared_query = $wpdb->prepare($query, intval($email->id));
+                    $ticketId = $wpdb->get_row($prepared_query)->ticket_id;
+                    if(!$ticketId){
+                        return '';   
+                    }
+
+                    return admin_url('post.php?post=' . $ticketId . '&action=edit');
+                }
             ]
         ],
     ]);

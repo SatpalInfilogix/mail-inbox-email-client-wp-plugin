@@ -33,39 +33,36 @@ add_action( 'graphql_register_types', function() {
             ],
         ],
         'resolve' => function( $root, $args, $context, $info ) {
-            if ( empty( $args['userId'] ) ) {
+            if (empty($args['userId'])) {
                 return [];
             }
 
-            $query_args = [
-                'post_type' => 'ticket',
-                'meta_query' => [
-                    [
-                        'key' => 'user_id',
-                        'value' => $args['userId'],
-                        'compare' => '='
-                    ]
-                ],
-            ];
+            global $wpdb;
+            // Query tickets related to the user in Awesome Support
+            $tickets_query = $wpdb->prepare("
+                SELECT p.ID as id, p.post_title as title, p.post_date as created_at, p.post_modified as updated_at,
+                    (SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = p.ID AND meta_key = '_status') AS status,
+                    (SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = p.ID AND meta_key = '_priority') AS priority
+                FROM {$wpdb->posts} AS p
+                WHERE p.post_type = 'ticket' AND p.post_author = %d
+                ORDER BY p.post_date DESC
+                LIMIT 5
+            ", $args['userId']);
 
-            $tickets_query = new WP_Query( $query_args );
-            $tickets = [];
+            $tickets = $wpdb->get_results($tickets_query);
 
-            if ( $tickets_query->have_posts() ) {
-                while ( $tickets_query->have_posts() ) {
-                    $tickets_query->the_post();
-                    $tickets[] = [
-                        'id' => get_the_ID(),
-                        'title' => get_the_title(),
-                        'content' => get_the_content(),
-                        'status' => get_post_meta( get_the_ID(), 'status', true ),
-                    ];
-                }
-            }
-
-            wp_reset_postdata();
-
-            return $tickets;
+            // Format the ticket data as expected in GraphQL response
+            return array_map(function ($ticket) {
+                return [
+                    'id' => $ticket->id,
+                    'title' => $ticket->title,
+                    'status' => $ticket->status,
+                    'priority' => $ticket->priority,
+                    'created_at' => $ticket->created_at,
+                    'updated_at' => $ticket->updated_at,
+                    'link' => get_edit_post_link($ticket->id)
+                ];
+            }, $tickets);
         },
     ]);
 });

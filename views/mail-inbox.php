@@ -34,23 +34,12 @@ function mail_inbox_display()
         <div data-authorization-url="<?php echo $authorization_url; ?>"></div>
     <?php echo '<script type="module" src="' . MAIL_INBOX_PLUGIN_URL . 'assets/js/no-account-connected.js"></script>';
     } else {
-        /* $connected_account = $connected_accounts[0];
-            $access_token = mail_inbox_decrypt($connected_account->access_token);
-
-            $response = wp_remote_get('https://graph.microsoft.com/v1.0/me/mailFolders', [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $access_token,
-                    'Accept' => 'application/json',
-                ],
-            ]);
-            echo '<pre>';
-            print_r(json_decode($response['body']));
-            die();  */
         ?>
         <div id="mail-inbox-app"></div>
         <script>
             window.mailInbox = {
-                siteUrl: '<?php echo get_site_url() ?>'
+                siteUrl: '<?php echo get_site_url(); ?>',
+                adminUrl: '<?php echo admin_url(); ?>'
             }
         </script>
         <?php
