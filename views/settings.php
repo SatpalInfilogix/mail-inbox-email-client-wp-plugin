@@ -12,10 +12,14 @@ function settings() {
         $client_id = sanitize_text_field($_POST['mail_client_id']);
         $client_secret = sanitize_text_field($_POST['mail_client_secret']);
         $agent_role = sanitize_text_field($_POST['mail_agent_role']);
+        $auto_refresh = isset($_POST['auto_refresh']) ? 'on' : 'off';
+        $auto_refresh_seconds = sanitize_text_field($_POST['auto_refresh_seconds']);
 
         update_option('mail_inbox_client_id', mail_inbox_encrypt($client_id));
         update_option('mail_inbox_client_secret', mail_inbox_encrypt($client_secret));
         update_option('mail_inbox_agent_role', $agent_role);
+        update_option('mail_inbox_auto_refresh', $auto_refresh);
+        update_option('mail_inbox_auto_refresh_seconds', $auto_refresh_seconds);
 
         echo '<div class="updated"><p>Settings saved.</p></div>';
     }
@@ -54,6 +58,8 @@ function settings() {
     $client_id_encrypted = get_option('mail_inbox_client_id', '');
     $client_secret_encrypted = get_option('mail_inbox_client_secret', '');
     $agent_role = get_option('mail_inbox_agent_role', '');
+    $auto_refresh = get_option('mail_inbox_auto_refresh', 'off');
+    $auto_refresh_seconds = get_option('mail_inbox_auto_refresh_seconds', '');
 
     $client_id = $client_id_encrypted ? mail_inbox_decrypt($client_id_encrypted) : '';
     $client_secret = $client_secret_encrypted ? mail_inbox_decrypt($client_secret_encrypted) : '';
@@ -93,6 +99,20 @@ function settings() {
                         </select>
                     </td>
                 </tr>
+                <tr valign="top">
+                    <th scope="row"><label for="auto_refresh">Auto refresh</label></th>
+                    <td>
+                        <label class="wp-switch">
+                            <input type="checkbox" name="auto_refresh" id="auto_refresh" <?php checked($auto_refresh, 'on'); ?>>
+                            <span class="wp-toggle-slider"></span>
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row" colspan="2">
+                        <label for="auto_refresh_seconds">Auto refresh after <input type="number" name="auto_refresh_seconds" min="1" id="auto_refresh_seconds" style="width: 75px" value="<?php echo esc_attr($auto_refresh_seconds); ?>"> Seconds</label>
+                    </th>
+                </tr>
             </table>
             <?php submit_button('Save Settings', 'primary', 'mail_inbox_save_settings'); ?>
         </form>
@@ -102,6 +122,8 @@ function settings() {
             <p><input type="submit" name="mail_inbox_clean_records" class="button button-secondary" value="Clean Plugin Data" onclick="return confirm('Are you sure you want to delete all plugin data? This action cannot be undone.');" /></p>
         </form>
     </div>
+
+    <link rel="stylesheet" href="<?php echo MAIL_INBOX_PLUGIN_URL . 'assets/css/settings.css' ?>">
     <?php
 }
 ?>

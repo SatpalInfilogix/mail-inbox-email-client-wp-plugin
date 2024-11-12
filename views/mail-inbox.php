@@ -34,6 +34,17 @@ function mail_inbox_display()
         <div data-authorization-url="<?php echo $authorization_url; ?>"></div>
     <?php echo '<script type="module" src="' . MAIL_INBOX_PLUGIN_URL . 'assets/js/no-account-connected.js"></script>';
     } else {
+        $auto_refresh = get_option('mail_inbox_auto_refresh', 'off');
+        $auto_refresh_seconds = get_option('mail_inbox_auto_refresh_seconds', '');
+        if($auto_refresh=='on' && $auto_refresh_seconds){
+            ?><script>
+                jQuery(function(){
+                    setTimeout(function(){
+                        window.location.reload();
+                    }, <?php echo esc_js($auto_refresh_seconds * 1000); ?>)
+                });
+            </script><?php
+        }
         ?>
         <div id="mail-inbox-app"></div>
         <script>
