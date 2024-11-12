@@ -49,15 +49,59 @@ export default {
             this.showMenu = false;
             this.menuAttachment = null;
         },
+        updateIframeContent() {
+            const iframe = this.$refs.emailIframe;
+            const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+            iframeDocument.open();
+            iframeDocument.write(this.email.body_content);
+            iframeDocument.close();
+
+            // Adjust the iframe height after content is loaded
+            iframe.onload = () => {
+                this.adjustIframeHeight();
+            };
+
+            // Fallback in case onload doesn't fire
+            setTimeout(() => {
+                this.adjustIframeHeight();
+            }, 500);
+        },
+        adjustIframeHeight() {
+            const iframe = this.$refs.emailIframe;
+            const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+            const iframeBody = iframeDocument.body;
+            const contentHeight = iframeBody.scrollHeight;
+
+            // Measure heights of other elements
+            const emailHeadersHeight = this.$refs.emailHeaders ? this.$refs.emailHeaders.offsetHeight : 0;
+            const cardActionsHeight = this.$refs.cardActions ? this.$refs.cardActions.offsetHeight : 0;
+
+            // Calculate the maximum available height
+            const windowHeight = window.innerHeight;
+            const maxIframeHeight = windowHeight - emailHeadersHeight - cardActionsHeight - 50; // Adjust 50px for padding/margins
+
+            // Set the iframe height to fit content or available space
+            iframe.style.height = Math.min(contentHeight, maxIframeHeight) + 'px';
+        },
+    },
+    watch: {
+        email: {
+            handler() {
+                this.updateIframeContent();
+            },
+            deep: true,
+        },
+    },
+    mounted() {
+        this.updateIframeContent();
     },
     template: `
         <v-container fluid class="pt-0">
             <v-card class="mx-auto" max-width="800">
             <!-- Email Content -->
-            <v-card-text style="overflow: auto; max-height: 80vh;">
-            
+            <v-card-text style="overflow: auto; max-height: 100vh;">
                 <!-- Email Headers -->
-                <div class="email-headers">
+                <div class="email-headers" ref="emailHeaders">
                     <!-- From -->
                     <div class="d-flex justify-space-between">
                         <p class="text-body-2 my-1" v-for="toRecipient in JSON.parse(email.to_recipients)">
@@ -158,11 +202,11 @@ export default {
                 </div>
 
                 <!-- Email Body -->
-                <div v-html="email.body_content" class="email-body"></div>
+                <iframe ref="emailIframe" class="email-body-iframe" style="width: 100%; height: 45vh; border: none;"></iframe>
             </v-card-text>
 
             <!-- Actions -->
-            <v-card-actions>
+            <v-card-actions ref="cardActions">
                 <v-spacer></v-spacer>
                 <v-btn color="primary" variant="tonal">
                     <v-icon left>mdi-reply</v-icon>

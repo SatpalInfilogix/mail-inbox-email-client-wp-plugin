@@ -112,7 +112,7 @@ export default {
             this.$emit('viewEmailIfPreviewOpened', row.id);
         },
         async loadEmails(offset = 0) {
-            this.$emit('loading', 'Loading emails...');
+            this.$emit('loadingText', 'Loading emails...');
 
             if (offset === 0) {
                 this.loading = false;
@@ -190,8 +190,8 @@ export default {
 
                 const apiResponse = await response.json();
                 this.isSearching = false;
-                this.$emit('loading', '');
-
+                this.$emit('loadingText', '');
+                
                 if (apiResponse.errors) {
                     console.error('GraphQL Errors:', apiResponse.errors);
                 }
@@ -251,6 +251,7 @@ export default {
                         this.loadedMails = [...this.loadedMails, ...newEmails];
                     }
 
+                    //this.$emit('loading', '');
                     if (newEmails.length < 20) {
                         this.allLoaded = true;
                     }
@@ -260,7 +261,6 @@ export default {
             } catch (error) {
                 console.error('Error loading emails:', error);
             } finally {
-                this.$emit('loading', '');
                 this.loading = false;
             }
         },
@@ -596,9 +596,9 @@ export default {
         },
     },
     async mounted() {
-        this.fetchTags();
-        this.fetchCategories();
-        this.fetchUsers('');
+        await this.fetchTags();
+        await this.fetchCategories();
+        await this.fetchUsers('');
         this.$nextTick(() => {
             const dataTable = this.$refs.mailDataTable;
             if (dataTable) {

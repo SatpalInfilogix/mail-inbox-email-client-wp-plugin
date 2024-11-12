@@ -463,7 +463,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     @view-email="viewEmail"
                                     @updateReadStatus="updateReadStatus"
                                     @view-email-if-preview-opened="viewEmailIfPreviewOpened"
-                                    @loading="handleLoadingText">
+                                    @loadingText="handleLoadingText">
                                 </mail-list>
                             </v-col>
 
