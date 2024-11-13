@@ -3,7 +3,7 @@
 add_action('admin_enqueue_scripts', 'mail_inbox_enqueue_scripts');
 function mail_inbox_enqueue_scripts($hook) {
     // Ensure we only load the scripts on the Mail Inbox admin page
-    if ($hook !== 'toplevel_page_mail-inbox' && $hook !== 'mail-inbox_page_connected-accounts' && $hook !== 'mail-inbox_page_manage-categories' && $hook !== 'mail-inbox_page_manage-tags' && $hook !== 'mail-inbox_page_kpi-rules') {
+    if ($hook !== 'toplevel_page_mail-inbox' && $hook !== 'emails_page_connected-accounts' && $hook !== 'emails_page_manage-categories' && $hook !== 'emails_page_manage-tags' && $hook !== 'emails_page_kpi-rules') {
         return;
     }
 

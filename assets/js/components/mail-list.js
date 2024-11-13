@@ -112,7 +112,7 @@ export default {
             this.$emit('viewEmailIfPreviewOpened', row.id);
         },
         async loadEmails(offset = 0) {
-            this.$emit('loadingText', 'Loading emails...');
+            //this.$emit('loadingText', 'Loading emails...');
 
             if (offset === 0) {
                 this.loading = false;
@@ -190,7 +190,7 @@ export default {
 
                 const apiResponse = await response.json();
                 this.isSearching = false;
-                this.$emit('loadingText', '');
+                //this.$emit('loadingText', '');
                 
                 if (apiResponse.errors) {
                     console.error('GraphQL Errors:', apiResponse.errors);

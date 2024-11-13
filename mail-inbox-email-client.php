@@ -34,3 +34,28 @@ function deactivate_mail_inbox_email_client() {
     remove_mail_inbox_cron_job();
 }
 register_deactivation_hook(__FILE__, 'deactivate_mail_inbox_email_client');
+
+function add_email_capabilities() {
+    // Define the new email capabilities
+    $capabilities = [
+        'mail_inbox_view_email',
+        'mail_inbox_settings',
+        'mail_inbox_categories',
+        'mail_inbox_tags',
+        'mail_inbox_kpi_rules',
+    ];
+
+    // Get roles that should have the new capabilities (modify as needed)
+    $roles_to_add_capabilities = ['administrator', 'email_manager'];
+
+    // Loop through each role to assign the capabilities
+    foreach ($roles_to_add_capabilities as $role_name) {
+        $role = get_role($role_name);
+        if ($role) {
+            foreach ($capabilities as $capability) {
+                $role->add_cap($capability);
+            }
+        }
+    }
+}
+add_action('admin_init', 'add_email_capabilities');

@@ -7,8 +7,8 @@ add_action('admin_menu', 'mail_inbox_add_admin_menu');
 function mail_inbox_add_admin_menu() {
     add_menu_page(
         'Mail Inbox',           // Page title
-        'Mail Inbox',           // Menu title
-        'edit_posts',           // Capability
+        'Emails',           // Menu title
+        'mail_inbox_view_email', // Capability
         'mail-inbox',           // Menu slug
         'mail_inbox_display',   // Function to display the page content
         'dashicons-email-alt',  // Icon for the menu
@@ -28,7 +28,7 @@ function mail_inbox_add_admin_menu() {
         'mail-inbox',                   // Parent slug
         'Mail Inbox Categories',        // Page title
         'Manage Categories',            // Menu title
-        'manage_options',               // Capability
+        'mail_inbox_categories',               // Capability
         'manage-categories',            // Menu slug
         'manage_categories'             // Function to display the page content
     );
@@ -37,7 +37,7 @@ function mail_inbox_add_admin_menu() {
         'mail-inbox',                   // Parent slug
         'Mail Inbox Tags',              // Page title
         'Manage Tags',                  // Menu title
-        'manage_options',               // Capability
+        'mail_inbox_settings',               // Capability
         'manage-tags',                  // Menu slug
         'manage_tags'                   // Function to display the page content
     );
@@ -46,7 +46,7 @@ function mail_inbox_add_admin_menu() {
         'mail-inbox',               // Parent slug
         'Settings',                 // Page title
         'Settings',                 // Menu title
-        'manage_options',           // Capability
+        'mail_inbox_tags',           // Capability
         'mail-inbox-settings',      // Menu slug
         'settings'                  // Function to display the page content
     );
@@ -55,7 +55,7 @@ function mail_inbox_add_admin_menu() {
         'mail-inbox',               // Parent slug
         'KPI Rules',                 // Page title
         'KPI Rules',                 // Menu title
-        'manage_options',           // Capability
+        'mail_inbox_kpi_rules',           // Capability
         'kpi-rules',                // Menu slug
         'kpi_rules'                  // Function to display the page content
     );
