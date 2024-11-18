@@ -179,9 +179,10 @@ function getNewEmailsCount($accountId, $folderId = '')
     $newEmailsCount = 0;
     $foldersCount = [];
 
+    // Get new emails count for specific folder
     if ($folderId) {
         $messageCount = countEmailsByFolderId($accessToken, $accountId, $folderId);
-
+     
         if (isset($messageCount['error']['code'])) {
             return $messageCount;
         }
@@ -227,7 +228,7 @@ function getNewEmailsCount($accountId, $folderId = '')
         // Sync emails for each folder when no specific folder ID is provided
         foreach ($folders as $folder) {
             $folderId = $folder->folder_id;
-
+            
             // Get saved email count for the folder
             $query = $wpdb->prepare(
                 "SELECT COUNT(*) as email_count FROM ".MAIL_INBOX_EMAILS_TABLE." WHERE account_id = %d AND parent_folder_id = %s",
@@ -266,7 +267,6 @@ function getNewEmailsCount($accountId, $folderId = '')
         'folders' => $foldersCount
     ];
 }
-
 
 function getNewEmails($accountId, $folder_id = ''){
     $accessToken = getMicrosoftAccessToken($accountId);

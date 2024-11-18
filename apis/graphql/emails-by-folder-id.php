@@ -245,6 +245,10 @@ add_action('graphql_register_types', function () {
             $table_name = MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE;
             $associated_user = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM $table_name WHERE email_id = %d", $email->id));
 
+            if (!class_exists('WooCommerce')) {
+                return [];
+            }
+
             if($associated_user->user_id && get_userdata($associated_user->user_id)->data){
                 $userEmail = get_userdata($associated_user->user_id)->data->user_email;
             } else {
@@ -259,7 +263,7 @@ add_action('graphql_register_types', function () {
                 'limit'         => 5,     // Get all matching orders
                 'status'        => 'any',  // Retrieve orders of any status
             );
-        
+                        
             $orders = wc_get_orders($args);
             if (empty($orders)) {
                 return [];
@@ -334,33 +338,35 @@ add_action('graphql_register_types', function () {
                     ";
                     $prepared_query = $wpdb->prepare($query, intval($email->id));
                     $additional_info = $wpdb->get_row($prepared_query);
-
+                    
                     $ticketTitle = '';
                     if (get_post_type($additional_info->ticket_id) === 'ticket') {
                         $ticketTitle = get_the_title($additional_info->ticket_id);
                     }
 
                     $orderTitle = '';
-                    if (wc_get_order($additional_info->order_id)) {
-                        $order = wc_get_order($additional_info->order_id);
-                        if ($order) {
-                            $orderTitle = $order->get_order_number();
-                        } 
+                    if (class_exists('WooCommerce')) {
+                        if (wc_get_order($additional_info->order_id)) {
+                            $order = wc_get_order($additional_info->order_id);
+                            if ($order) {
+                                $orderTitle = $order->get_order_number();
+                            } 
+                        }
                     }
                     
                     return [
-                        'id' => $additional_info->id,
-                        'email_id' => $additional_info->email_id,
-                        'tag_id' => $additional_info->tag_id,
-                        'tag_name' => $additional_info->tag_name,
-                        'agent_id' => $additional_info->agent_id,
-                        'user_id' => $additional_info->user_id,
-                        'ticket_id' => $additional_info->ticket_id,
-                        'ticket_title' => $ticketTitle,
-                        'order_id' => $additional_info->order_id,
-                        'order_title' => $orderTitle,
-                        'created_at' => $additional_info->created_at,
-                        'updated_at' => $additional_info->updated_at,
+                        'id' => $additional_info->id ?? null,
+                        'email_id' => $additional_info->email_id ?? null,
+                        'tag_id' => $additional_info->tag_id ?? null,
+                        'tag_name' => $additional_info->tag_name ?? null,
+                        'agent_id' => $additional_info->agent_id ?? null,
+                        'user_id' => $additional_info->user_id ?? null,
+                        'ticket_id' => $additional_info->ticket_id ?? null,
+                        'ticket_title' => $ticketTitle ?? null,
+                        'order_id' => $additional_info->order_id ?? null,
+                        'order_title' => $orderTitle ?? null,
+                        'created_at' => $additional_info->created_at ?? null,
+                        'updated_at' => $additional_info->updated_at ?? null,
                     ];
                 }
             ],

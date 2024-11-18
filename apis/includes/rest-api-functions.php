@@ -60,81 +60,79 @@ function updateOrCreateEmailFolder($account_id, $folder)
     }
 }
 
+function is_email_synced($emailId, $conversationId) {
+    global $wpdb;
+
+    $table_name = MAIL_INBOX_EMAILS_TABLE;
+    $exists = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table_name WHERE email_id = %s AND conversation_id = %s",
+        $emailId,
+        $conversationId
+    ));
+
+    return $exists > 0;
+}
+
+
 function updateOrCreateEmail($account_id, $email)
 {
     global $wpdb;
 
-    try {
-        $email_id = $email['id'];
-        $parent_folder_id = $email['parentFolderId'];
+    $emailId = $email['id'];
+    $conversationId = $email['conversationId'];
 
-        $savedFolder = $wpdb->get_row(
-            $wpdb->prepare("SELECT id FROM " . MAIL_INBOX_FOLDERS_TABLE . " WHERE folder_id = %s", $parent_folder_id)
-        );
+    if (!is_email_synced($emailId, $conversationId)) {
+        try {
+            $email_id = $email['id'];
+            $parent_folder_id = $email['parentFolderId'];
 
-        // Check if the folder exists in the table
-        $existingEmail = $wpdb->get_row(
-            $wpdb->prepare("SELECT * FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE received_datetime = %s AND sent_datetime = %s", $email['receivedDateTime'], $email['sentDateTime'])
-        );
-
-        // Prepare data for insert/update
-        $data = array(
-            'account_id' => $account_id,
-            'folder_id' => $savedFolder ? $savedFolder->id : null,
-            'email_id' => $email_id,
-            'categories' => json_encode($email['categories']),
-            'has_attachments' => isset($email['hasAttachments']) ? $email['hasAttachments'] : '',
-            'subject' => $email['subject'],
-            'body_preview' => $email['bodyPreview'],
-            'importance' => $email['importance'],
-            'parent_folder_id' => $email['parentFolderId'],
-            'conversation_id' => $email['conversationId'],
-            'is_delivery_receipt_requested' => isset($email['isDeliveryReceiptRequested']) ? $email['isDeliveryReceiptRequested'] : '',
-            'is_read_receipt_requested' => isset($email['isReadReceiptRequested']) ? $email['isReadReceiptRequested'] : '',
-            'is_read' => isset($email['isRead']) ? $email['isRead'] : '',
-            'is_draft' => isset($email['isDraft']) ? $email['isDraft'] : '',
-            'web_link' => $email['webLink'],
-            'body_content_type' => $email['body']['contentType'],
-            'body_content' => $email['body']['content'],
-            'sender' => json_encode($email['sender']),
-            'from' => json_encode($email['from']),
-            'to_recipients' => json_encode($email['toRecipients']),
-            'cc_recipients' => json_encode($email['ccRecipients']),
-            'bcc_recipients' => json_encode($email['bccRecipients']),
-            'reply_to' => json_encode($email['replyTo']),
-            'flag_status' => $email['flag']['flagStatus'],
-            'created_datetime' => $email['createdDateTime'],
-            'last_modified_datetime' => $email['lastModifiedDateTime'],
-            'received_datetime' => $email['receivedDateTime'],
-            'sent_datetime' => $email['sentDateTime'],
-        );
-
-        // If email exists, update it; otherwise, insert a new row
-        /* if ($existingEmail) {
-            // Update existing email
-            $result = $wpdb->update(
-                MAIL_INBOX_EMAILS_TABLE,
-                $data,
-                array('email_id' => $email_id)
+            $savedFolder = $wpdb->get_row(
+                $wpdb->prepare("SELECT id FROM " . MAIL_INBOX_FOLDERS_TABLE . " WHERE folder_id = %s", $parent_folder_id)
             );
 
-            // Error handling
-            if ($result === false) {
-                mail_inbox_error_log("Error updating email: " . $wpdb->last_error);
-            }
-        } else {   */
-            // Insert new email
+            // Prepare data for insert/update
+            $data = array(
+                'account_id' => $account_id,
+                'folder_id' => $savedFolder ? $savedFolder->id : null,
+                'email_id' => $email_id,
+                'categories' => json_encode($email['categories']),
+                'has_attachments' => isset($email['hasAttachments']) ? $email['hasAttachments'] : '',
+                'subject' => $email['subject'],
+                'body_preview' => $email['bodyPreview'],
+                'importance' => $email['importance'],
+                'parent_folder_id' => $email['parentFolderId'],
+                'conversation_id' => $email['conversationId'],
+                'is_delivery_receipt_requested' => isset($email['isDeliveryReceiptRequested']) ? $email['isDeliveryReceiptRequested'] : '',
+                'is_read_receipt_requested' => isset($email['isReadReceiptRequested']) ? $email['isReadReceiptRequested'] : '',
+                'is_read' => isset($email['isRead']) ? $email['isRead'] : '',
+                'is_draft' => isset($email['isDraft']) ? $email['isDraft'] : '',
+                'web_link' => $email['webLink'],
+                'body_content_type' => $email['body']['contentType'],
+                'body_content' => $email['body']['content'],
+                'sender' => json_encode($email['sender']),
+                'from' => json_encode($email['from']),
+                'to_recipients' => json_encode($email['toRecipients']),
+                'cc_recipients' => json_encode($email['ccRecipients']),
+                'bcc_recipients' => json_encode($email['bccRecipients']),
+                'reply_to' => json_encode($email['replyTo']),
+                'flag_status' => $email['flag']['flagStatus'],
+                'created_datetime' => $email['createdDateTime'],
+                'last_modified_datetime' => $email['lastModifiedDateTime'],
+                'received_datetime' => $email['receivedDateTime'],
+                'sent_datetime' => $email['sentDateTime'],
+            );
+
             $result = $wpdb->insert(
                 MAIL_INBOX_EMAILS_TABLE,
                 $data
             );
-            
+                
             // Error handling
             if ($result === false) {
                 throw new Exception("Error inserting email: " . $wpdb->last_error);
             }
 
-                  
+                    
             if(isset($email['attachments'])){
                 $attachments = $email['attachments'];
                 $saved_email_id = $wpdb->insert_id;
@@ -159,8 +157,10 @@ function updateOrCreateEmail($account_id, $email)
                     }
                 }
             }
-        /*  }  */
-    } catch (Exception $e) {
-        wp_send_json_error($e->getMessage(), 500);
+        } catch (Exception $e) {
+            wp_send_json_error($e->getMessage(), 500);
+        }
+    } else {
+        mail_inbox_error_log("Email {$emailId} is already being synced!");
     }
 }

@@ -33,6 +33,16 @@ function mail_inbox_display()
         <div id="no-account-connected"></div>
         <div data-authorization-url="<?php echo $authorization_url; ?>"></div>
     <?php echo '<script type="module" src="' . MAIL_INBOX_PLUGIN_URL . 'assets/js/no-account-connected.js"></script>';
+    } else if(!class_exists('WPGraphQL')){ ?>
+        <script>
+            window.mailInbox = {
+                siteUrl: '<?php echo get_site_url(); ?>',
+                nonce: '<?php echo wp_create_nonce('wp_rest'); ?>'
+            }
+        </script>
+
+        <div id="plugin-not-installed"></div>
+    <?php echo '<script type="module" src="' . MAIL_INBOX_PLUGIN_URL . 'assets/js/required-plugin-not-installed.js"></script>';
     } else {
         $auto_refresh = get_option('mail_inbox_auto_refresh', 'off');
         $auto_refresh_seconds = get_option('mail_inbox_auto_refresh_seconds', '');
@@ -50,7 +60,9 @@ function mail_inbox_display()
         <script>
             window.mailInbox = {
                 siteUrl: '<?php echo get_site_url(); ?>',
-                adminUrl: '<?php echo admin_url(); ?>'
+                adminUrl: '<?php echo admin_url(); ?>',
+                isWoocommerceInstalled: <?php echo class_exists('WooCommerce') ? 'true' : 'false'; ?>,
+                isAwesomeSupportInstalled: <?php echo is_plugin_active( 'awesome-support/awesome-support.php' ) ? 'true' : 'false' ?>,
             }
         </script>
         <?php

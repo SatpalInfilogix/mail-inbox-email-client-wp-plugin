@@ -265,6 +265,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             },
             handleSynchronization(message, isEmailSynced = 0){
+                console.log('message',message)
                 this.loadingText = message;
 
                 if(isEmailSynced > 0){

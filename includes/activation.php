@@ -12,6 +12,11 @@ function mail_inbox_activate_plugin() {
     
     global $wpdb;
 
+    $role = get_role('administrator'); // Temporarily get an admin role to initialize the cap
+    if ($role && !$role->has_cap('email_access')) {
+        $role->add_cap('email_access');
+    }
+
     // Get the correct character set and collation
     $charset_collate = $wpdb->get_charset_collate();
 

@@ -269,6 +269,8 @@ export default {
                         'Okay',
                         this.closeErrorModal
                     );
+                } else {
+                    alert(apiResponse.data);
                 }
             }
         },

@@ -36,17 +36,7 @@ export default {
     data() {
         return {
             loadedMails: [],
-            headers: [
-                { title: 'Status', value: 'tag' },
-                { title: 'Agent', value: 'agent' },
-                { title: 'From', value: 'from' },
-                { title: 'Subject', value: 'subject' },
-                { title: 'Date/Time', value: 'received_datetime' },
-                { title: 'Attachments', value: 'attachments' },
-                { title: 'Category', value: 'category' },
-                { title: 'Ticket', value: 'selectedTicket' },
-                { title: 'Order', value: 'selectedOrder' }
-            ],
+            headers: this.generateHeaders(),
             search: '',
             selectedEmailId: 0,
             tags: [],
@@ -70,12 +60,40 @@ export default {
             searchingUsers: false,
         };
     },
+    computed:{
+        isWoocommerceInstalled(){
+            return window.mailInbox.isWoocommerceInstalled;
+        },
+        isAwesomeSupportInstalled(){
+            return window.mailInbox.isAwesomeSupportInstalled;
+        },
+    },
     methods: {
+        generateHeaders() {
+            const baseHeaders = [
+                { title: 'Status', value: 'tag' },
+                { title: 'Agent', value: 'agent' },
+                { title: 'From', value: 'from' },
+                { title: 'Subject', value: 'subject' },
+                { title: 'Date/Time', value: 'received_datetime' },
+                { title: 'Attachments', value: 'attachments' },
+                { title: 'Category', value: 'category' }
+            ];
+            
+            if (window.mailInbox.isAwesomeSupportInstalled) {
+                baseHeaders.push({ title: 'Ticket', value: 'selectedTicket' });
+            }
+
+            if (window.mailInbox.isWoocommerceInstalled) {
+                baseHeaders.push({ title: 'Order', value: 'selectedOrder' });
+            }
+
+            return baseHeaders;
+        },
         showEmailRightClickMenu(event, email) {
             const scrollTop = window.scrollY || document.documentElement.scrollTop;
             this.menuX = event.clientX;
             this.menuY = event.clientY + scrollTop;
-            console.log('email', email)
             this.rightClickSelectedEmail = email;
             this.menu = true;
         },
@@ -112,7 +130,7 @@ export default {
             this.$emit('viewEmailIfPreviewOpened', row.id);
         },
         async loadEmails(offset = 0) {
-            this.$emit('loadingText', 'Loading emails...');
+            //this.$emit('loadingText', 'Loading emails...');
 
             if (offset === 0) {
                 this.loading = false;
@@ -190,7 +208,7 @@ export default {
 
                 const apiResponse = await response.json();
                 this.isSearching = false;
-                this.$emit('loadingText', '');
+                //this.$emit('loadingText', '');
                 
                 if (apiResponse.errors) {
                     console.error('GraphQL Errors:', apiResponse.errors);
@@ -778,7 +796,7 @@ export default {
                         </v-select>
                     </td>
 
-                    <td>
+                    <td v-if="isAwesomeSupportInstalled">
                         <div style="width: 150px">
                             <v-autocomplete
                                 v-model="item.user"
@@ -821,8 +839,33 @@ export default {
                             <a :href="item.ticketLink" v-if="item.ticketLink" target="_blank">View Ticket</a>
                         </div>
                     </td>
-                    <td>
+                    <td v-if="isWoocommerceInstalled">
                         <div style="width: 100px">
+                            <v-autocomplete
+                                v-if="!isAwesomeSupportInstalled"
+                                v-model="item.user"
+                                :items="item.users ? item.users : users"
+                                :loading="searchingUsers"
+                                :search-input.sync="search"
+                                item-title="name"
+                                item-value="userId"
+                                return-object
+                                no-data-text="No users found"
+                                hide-details
+                                solo
+                                label="User"
+                                @update:search="fetchUsers($event, item)"
+                                >
+                                <template v-slot:item="{ props, item: userItem }">
+                                    <v-list-item v-bind="props" @click="handleEmailUser(item.id, userItem.value)"></v-list-item>
+                                </template>
+
+                                <template v-slot:no-data>
+                                    <span v-if="searchingUsers">Searching...</span>
+                                    <span v-else>No users found</span>
+                                </template>
+                            </v-autocomplete>
+
                             <v-select
                                 :items="item.orders"
                                 return-object
