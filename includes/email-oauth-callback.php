@@ -8,6 +8,12 @@ if (!defined('ABSPATH')) {
  * Handles the OAuth callback for the admin.
  */
 function handle_oauth_callback() {
+    if (isset($_GET['error_description'])) {
+        $error_message = sanitize_text_field($_GET['error_description']);
+        display_oauth_error_page($error_message);
+        exit;
+    }
+
     if (
         isset($_GET['code']) &&
         isset($_GET['state'])
@@ -31,6 +37,17 @@ function handle_oauth_callback() {
             wp_die('Authentication failed. Please try again.');
         }
     }
+}
+
+function display_oauth_error_page($error_message) {
+    ?>
+    <div style="text-align: center; margin-top: 50px;">
+        <h1>Authentication Error</h1>
+        <p>We're sorry, but an error occurred during authentication:</p>
+        <p><strong><?php echo esc_html($error_message); ?></strong></p>
+        <a href="<?php echo esc_url(MAIL_INBOX_PLUGIN_URL); ?>">Return Back</a>
+    </div>
+    <?php
 }
 
 add_action('init', 'handle_oauth_callback');

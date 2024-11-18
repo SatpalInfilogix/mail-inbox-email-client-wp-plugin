@@ -211,57 +211,58 @@ export default {
                 }
             }
         },
-        async syncEmails(retryCount = 3){
+        async syncEmails(retryCount = 3) {
             const formdata = new FormData();
             formdata.append("action", "sync_emails");
             formdata.append("account_id", this.selectedAccount.id);
             formdata.append("folder_id", this.syncFolder ? this.syncFolder.folder_id : '');
-
-            if(this.syncFolder){
-                this.$emit('synchronization', `Synced ${this.syncedEmailsCount} emails in ${this.syncFolder.folder_name} out of ${this.syncFolder.count}`, 1);
+        
+            if (this.syncFolder) {
+                this.$emit('synchronization', `${this.syncFolder.count} emails to be synced in ${this.syncFolder.folder_name}`, 1);
             }
-
+        
             try {
                 const response = await fetch(ajaxurl, {
                     method: 'POST',
                     body: formdata
                 });
-
+        
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-
+        
                 const apiResponse = await response.json();
-                if(apiResponse.success){
-                    this.syncedEmailsCount += apiResponse.data.count;
-
-                    // Check if there are more emails to sync
-                    if (apiResponse.data.count > 0 || apiResponse.data.count < 10) {
-                        if(this.isSyncing){
-                            if(apiResponse.data.count < 10){
-                                const syncedFolderIndex = this.foldersToBeSynced.findIndex(folder => folder.local_folder_id === this.syncFolder.local_folder_id);
-
-                                if(this.foldersToBeSynced[syncedFolderIndex+1]){
-                                    this.syncedEmailsCount = 0;
-                                    this.syncFolder = this.foldersToBeSynced[syncedFolderIndex+1]; 
-                                }
-                            }
-
-                            if(apiResponse.data.count!==0){
+                if (apiResponse.success) {
+                    const syncedCount = apiResponse.data.count; // Number of emails synced from the API response
+                    this.syncedEmailsCount += syncedCount;
+        
+                    // Ensure synced count doesn't decrease below zero
+                    if (this.syncFolder) {
+                        this.syncFolder.count = Math.max(0, this.syncFolder.count - syncedCount);
+                    }
+        
+                    const folderIndex = this.foldersToBeSynced.findIndex(folder => folder.local_folder_id === this.syncFolder.local_folder_id);
+                    if (folderIndex !== -1) {
+                        // Update only when synced count is greater than zero
+                        /* if (syncedCount > 0) {
+                            this.foldersToBeSynced[folderIndex].count = Math.max(0, this.foldersToBeSynced[folderIndex].count - syncedCount);
+                        } */
+        
+                        if (this.foldersToBeSynced[folderIndex].count > 0) {
+                            // If emails are still remaining in the current folder, avoid unnecessary recursion
+                            await this.syncEmails();
+                        } else {
+                            // Move to the next folder if the current folder is fully synced
+                            const nextFolderIndex = folderIndex + 1;
+                            if (this.foldersToBeSynced[nextFolderIndex]) {
+                                this.syncedEmailsCount = 0;
+                                this.syncFolder = this.foldersToBeSynced[nextFolderIndex];
                                 await this.syncEmails();
                             } else {
-                                if(this.syncFolder){
-                                    this.showSnackbar(`Emails for ${this.syncFolder.folder_name} folder are being synced!`, 'success');
-                                }
+                                this.showSnackbar(`Emails for ${this.syncFolder.folder_name} folder are synced!`, 'success');
                                 this.$emit('synchronization', ``);
                             }
                         }
-                    } else {
-                        if(this.syncFolder){
-                            this.showSnackbar(`Emails for ${this.syncFolder.folder_name} folder are being synced!`, 'success');
-                        }
-
-                        this.$emit('synchronization', ``);
                     }
                 } else {
                     let { code } = apiResponse.data;
@@ -287,7 +288,7 @@ export default {
                     alert(`Error syncing emails: ${error.message}`);
                 }
             }
-        },
+        },        
         showSnackbar(message, color = 'success') {
             this.snackbarMessage = message;
             this.snackbarColor = color;

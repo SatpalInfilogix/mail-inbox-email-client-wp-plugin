@@ -272,12 +272,6 @@ function getNewEmails($accountId, $folder_id = ''){
     $accessToken = getMicrosoftAccessToken($accountId);
 
     global $wpdb;
-    $query = $wpdb->prepare(
-        "SELECT COUNT(*) as email_count FROM ".MAIL_INBOX_EMAILS_TABLE." WHERE account_id = %d",
-        $accountId
-    );
-    
-    $savedEmailsCount = $wpdb->get_var($query);
 
     // Set the base email endpoint
     $emailEndpoint = 'messages?$top=10&$orderby=receivedDateTime%20asc';
@@ -285,18 +279,21 @@ function getNewEmails($accountId, $folder_id = ''){
     // If a folder ID is provided, adjust the endpoint to fetch emails from that specific folder
     if (!empty($folder_id)) {
         $query = $wpdb->prepare(
-            "SELECT COUNT(*) as email_count FROM ".MAIL_INBOX_EMAILS_TABLE." WHERE parent_folder_id = %s",
+            "SELECT received_datetime FROM ".MAIL_INBOX_EMAILS_TABLE." WHERE parent_folder_id = %s ORDER BY ID DESC",
             $folder_id
         );
 
-        $savedEmailsCount = $wpdb->get_var($query);
+        $lastSavedEmail = $wpdb->get_row($query);
 
         $emailEndpoint = 'mailFolders/' . $folder_id . '/messages?$top=10&$orderby=receivedDateTime%20asc';
     }
 
     // If there are saved emails, use the $skip parameter to fetch new emails
-    if (!empty($savedEmailsCount)) {
-        $emailEndpoint .= '&$skip=' . $savedEmailsCount;
+    if (!empty($lastSavedEmail->received_datetime)) {
+        $lastEmailTime = $lastSavedEmail->received_datetime;
+        $dateTime = new DateTime($lastEmailTime);
+        $iso8601Date = $dateTime->format('Y-m-d\TH:i:s\Z');
+        $emailEndpoint .= '&$filter=receivedDateTime ge ' . $iso8601Date;
     }
 
     $response = wp_remote_get(GRAPH_API_BASE_ENDPOINT.$emailEndpoint, [
@@ -317,62 +314,67 @@ function getNewEmails($accountId, $folder_id = ''){
     $emails_with_attachments = [];
 
     foreach ($emails['value'] as $email) {
-        if ($email['hasAttachments']) {
-            $attachments_response = wp_remote_get(GRAPH_API_BASE_ENDPOINT . "messages/{$email['id']}/attachments", [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $accessToken,
-                    'Accept' => 'application/json',
-                ]
-            ]);
+        $emailId = $email['id'];
+        $conversationId = $email['conversationId'];
+    
+        if (!is_email_synced($emailId, $conversationId)) {
+            if ($email['hasAttachments']) {
+                $attachments_response = wp_remote_get(GRAPH_API_BASE_ENDPOINT . "messages/{$email['id']}/attachments", [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Accept' => 'application/json',
+                    ]
+                ]);
 
-            if ( is_wp_error( $attachments_response ) ) {
-                error_log('Failed after multiple attempts: ' . $attachments_response->get_error_message());
-                continue;
-            }
-
-            $attachments = json_decode($attachments_response['body'], true);
-            $email['attachments'] = $attachments['value'];
-
-            // Ensure the email-attachments directory exists once
-            $baseDir = WP_CONTENT_DIR . '/uploads/email-attachments/';
-            if (!is_dir($baseDir)) {
-                mkdir($baseDir, 0777, true);
-            }
-
-            // Create a specific directory for each email
-            $uniqueId = uniqid();
-            $emailDir = $baseDir . $uniqueId;
-            $localDir = 'uploads/email-attachments/'.$uniqueId;
-
-            if (!is_dir($emailDir)) {
-                mkdir($emailDir, 0777, true);
-            }
-
-            $path = $emailDir . '/';
-
-            // Loop through attachments, save and handle inline references
-            foreach ($email['attachments'] as $key => $attachment) {
-                $attachmentName = $path . $attachment['name'];
-                $attachmentContent = base64_decode($attachment['contentBytes']);
-
-                // Check if writing to file is successful
-                if (file_put_contents($attachmentName, $attachmentContent) === false) {
-                    error_log("Failed to save attachment {$attachment['name']} for email {$email['id']}");
+                if ( is_wp_error( $attachments_response ) ) {
+                    error_log('Failed after multiple attempts: ' . $attachments_response->get_error_message());
                     continue;
                 }
 
-                // Add the local path to the attachment details
-                $email['attachments'][$key]['saved_path'] = $localDir.'/'.$attachment['name'];
+                $attachments = json_decode($attachments_response['body'], true);
+                $email['attachments'] = $attachments['value'];
 
-                // Replace inline content ID with base64 data URI
-                if (isset($attachment['contentId']) && isset($attachment['contentBytes']) && strpos($email['body']['content'], "cid:" . $attachment['contentId']) !== false) {
-                    $base64Data = 'data:' . $attachment['contentType'] . ';base64,' . $attachment['contentBytes'];
-                    $email['body']['content'] = str_replace("cid:" . $attachment['contentId'], $base64Data, $email['body']['content']);
+                // Ensure the email-attachments directory exists once
+                $baseDir = WP_CONTENT_DIR . '/uploads/email-attachments/';
+                if (!is_dir($baseDir)) {
+                    mkdir($baseDir, 0777, true);
+                }
+
+                // Create a specific directory for each email
+                $uniqueId = uniqid();
+                $emailDir = $baseDir . $uniqueId;
+                $localDir = 'uploads/email-attachments/'.$uniqueId;
+
+                if (!is_dir($emailDir)) {
+                    mkdir($emailDir, 0777, true);
+                }
+
+                $path = $emailDir . '/';
+
+                // Loop through attachments, save and handle inline references
+                foreach ($email['attachments'] as $key => $attachment) {
+                    $attachmentName = $path . $attachment['name'];
+                    $attachmentContent = base64_decode($attachment['contentBytes']);
+
+                    // Check if writing to file is successful
+                    if (file_put_contents($attachmentName, $attachmentContent) === false) {
+                        error_log("Failed to save attachment {$attachment['name']} for email {$email['id']}");
+                        continue;
+                    }
+
+                    // Add the local path to the attachment details
+                    $email['attachments'][$key]['saved_path'] = $localDir.'/'.$attachment['name'];
+
+                    // Replace inline content ID with base64 data URI
+                    if (isset($attachment['contentId']) && isset($attachment['contentBytes']) && strpos($email['body']['content'], "cid:" . $attachment['contentId']) !== false) {
+                        $base64Data = 'data:' . $attachment['contentType'] . ';base64,' . $attachment['contentBytes'];
+                        $email['body']['content'] = str_replace("cid:" . $attachment['contentId'], $base64Data, $email['body']['content']);
+                    }
                 }
             }
-        }
 
-        $emails_with_attachments[] = $email;
+            $emails_with_attachments[] = $email;
+        }
     }
 
     return $emails_with_attachments;
