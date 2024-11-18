@@ -211,7 +211,7 @@ export default {
                 }
             }
         },
-        async syncEmails(){
+        async syncEmails(retryCount = 3){
             const formdata = new FormData();
             formdata.append("action", "sync_emails");
             formdata.append("account_id", this.selectedAccount.id);
@@ -221,56 +221,70 @@ export default {
                 this.$emit('synchronization', `Synced ${this.syncedEmailsCount} emails in ${this.syncFolder.folder_name} out of ${this.syncFolder.count}`, 1);
             }
 
-            const response = await fetch(ajaxurl, {
-                method: 'POST',
-                body: formdata
-            });
+            try {
+                const response = await fetch(ajaxurl, {
+                    method: 'POST',
+                    body: formdata
+                });
 
-            const apiResponse = await response.json();
-            if(apiResponse.success){
-                this.syncedEmailsCount += apiResponse.data.count;
-
-                // Check if there are more emails to sync
-                if (apiResponse.data.count > 0 || apiResponse.data.count < 10) {
-                    if(this.isSyncing){
-                        if(apiResponse.data.count < 10){
-                            const syncedFolderIndex = this.foldersToBeSynced.findIndex(folder => folder.local_folder_id === this.syncFolder.local_folder_id);
-
-                            if(this.foldersToBeSynced[syncedFolderIndex+1]){
-                                this.syncedEmailsCount = 0;
-                                this.syncFolder = this.foldersToBeSynced[syncedFolderIndex+1]; 
-                            }
-                        }
-
-                        if(apiResponse.data.count!==0){
-                            await this.syncEmails();
-                        } else {
-                            if(this.syncFolder){
-                                this.showSnackbar(`Emails for ${this.syncFolder.folder_name} folder are being synced!`, 'success');
-                            }
-                            this.$emit('synchronization', ``);
-                        }
-                    }
-                } else {
-                    if(this.syncFolder){
-                        this.showSnackbar(`Emails for ${this.syncFolder.folder_name} folder are being synced!`, 'success');
-                    }
-
-                    this.$emit('synchronization', ``);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-            } else {
-                let { code } = apiResponse.data;
-                if (code === 401) {
-                    this.showErrorDialog('Session Expired', 'Your session has expired. Please reconnect.', 'Reconnect', this.reconnectAccount);
-                } else if (code === 404) {
-                    this.showErrorDialog(
-                        'Emails not found!',
-                        `Emails not found associated with ${this.selectedAccount.email}`,
-                        'Okay',
-                        this.closeErrorModal
-                    );
+
+                const apiResponse = await response.json();
+                if(apiResponse.success){
+                    this.syncedEmailsCount += apiResponse.data.count;
+
+                    // Check if there are more emails to sync
+                    if (apiResponse.data.count > 0 || apiResponse.data.count < 10) {
+                        if(this.isSyncing){
+                            if(apiResponse.data.count < 10){
+                                const syncedFolderIndex = this.foldersToBeSynced.findIndex(folder => folder.local_folder_id === this.syncFolder.local_folder_id);
+
+                                if(this.foldersToBeSynced[syncedFolderIndex+1]){
+                                    this.syncedEmailsCount = 0;
+                                    this.syncFolder = this.foldersToBeSynced[syncedFolderIndex+1]; 
+                                }
+                            }
+
+                            if(apiResponse.data.count!==0){
+                                await this.syncEmails();
+                            } else {
+                                if(this.syncFolder){
+                                    this.showSnackbar(`Emails for ${this.syncFolder.folder_name} folder are being synced!`, 'success');
+                                }
+                                this.$emit('synchronization', ``);
+                            }
+                        }
+                    } else {
+                        if(this.syncFolder){
+                            this.showSnackbar(`Emails for ${this.syncFolder.folder_name} folder are being synced!`, 'success');
+                        }
+
+                        this.$emit('synchronization', ``);
+                    }
                 } else {
-                    alert(apiResponse.data);
+                    let { code } = apiResponse.data;
+                    if (code === 401) {
+                        this.showErrorDialog('Session Expired', 'Your session has expired. Please reconnect.', 'Reconnect', this.reconnectAccount);
+                    } else if (code === 404) {
+                        this.showErrorDialog(
+                            'Emails not found!',
+                            `Emails not found associated with ${this.selectedAccount.email}`,
+                            'Okay',
+                            this.closeErrorModal
+                        );
+                    } else {
+                        alert(apiResponse.data.data);
+                    }
+                }
+            } catch (error) {
+                if (retryCount > 0) {
+                    console.warn(`Retrying sync... attempts left: ${retryCount}`);
+                    setTimeout(() => this.syncEmails(retryCount - 1), 2000); // Retry after a short delay
+                } else {
+                    this.$emit('synchronization', ``);
+                    alert(`Error syncing emails: ${error.message}`);
                 }
             }
         },
