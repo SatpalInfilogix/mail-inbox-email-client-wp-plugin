@@ -248,7 +248,7 @@ export default {
                             this.foldersToBeSynced[folderIndex].count = Math.max(0, this.foldersToBeSynced[folderIndex].count - syncedCount);
                         } */
         
-                        if (this.foldersToBeSynced[folderIndex].count > 0) {
+                        if (syncedCount > 0) {
                             // If emails are still remaining in the current folder, avoid unnecessary recursion
                             await this.syncEmails();
                         } else {

@@ -77,3 +77,10 @@ function mail_inbox_error_log($message, $type = 'INFO') {
     // Append the log entry to the log file
     file_put_contents($log_file, $log_entry, FILE_APPEND);
 }
+
+
+function localToISOTimestamp($localDate){
+    $dateTime = new DateTime($localDate);
+    $iso8601Date = $dateTime->format('Y-m-d\TH:i:s\Z');
+    return $iso8601Date;
+}

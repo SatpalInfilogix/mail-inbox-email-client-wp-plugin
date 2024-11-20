@@ -161,7 +161,7 @@ function updateOrCreateEmail($account_id, $email)
             wp_send_json_error($e->getMessage(), 500);
         }
     } else {
-        print_r($email);
+        //print_r($email);
         mail_inbox_error_log("Email {$emailId} is already being synced!");
     }
 }

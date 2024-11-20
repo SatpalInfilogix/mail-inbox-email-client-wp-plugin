@@ -89,7 +89,7 @@ function getGraphMailFolders($accountId)
 {
     $accessToken = getMicrosoftAccessToken($accountId);
     $url = GRAPH_API_BASE_ENDPOINT . 'mailFolders?$top=999&$includeHiddenFolders=true';
-    
+
     $folders = [];
 
     // Fetch all folders including their nested child folders recursively
@@ -135,16 +135,21 @@ function fetchFoldersRecursively($url, $accessToken, &$folders)
 
         // Check for nextLink to continue pagination
         $url = $body['@odata.nextLink'] ?? null;
-
     } while ($url);
 
     return $folders;
 }
 
-function countEmailsByFolderId($accessToken, $accountId, $folderId)
+function countEmailsByFolderId($accessToken, $folderId, $lastSavedEmailTime = '')
 {
     // Prepare the API endpoint for counting messages in the specified folder
     $countUrl = GRAPH_API_BASE_ENDPOINT . 'mailFolders/' . $folderId . '/messages?$count=true&$top=1';
+
+    // Append filter condition if $lastSavedEmailTime is provided
+    if (!empty($lastSavedEmailTime)) {
+        $filterQuery = '&$filter=receivedDateTime ge ' . $lastSavedEmailTime;
+        $countUrl .= $filterQuery;
+    }
 
     // Make the request to the Microsoft Graph API
     $countResponse = wp_remote_get($countUrl, [
@@ -181,83 +186,86 @@ function getNewEmailsCount($accountId, $folderId = '')
 
     // Get new emails count for specific folder
     if ($folderId) {
-        $messageCount = countEmailsByFolderId($accessToken, $accountId, $folderId);
-     
+        $lastSavedEmail = $wpdb->get_row($wpdb->prepare(
+            "SELECT received_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE account_id = %d AND parent_folder_id = %s ORDER BY received_datetime DESC LIMIT 1",
+            $accountId,
+            $folderId
+        ));
+
+        $iso8601Date = '';
+        if ($lastSavedEmail) {
+            $iso8601Date = localToISOTimestamp($lastSavedEmail->received_datetime);
+        }
+
+        // Sync new emails for the folder
+        $messageCount = countEmailsByFolderId($accessToken, $folderId, $iso8601Date);
+
         if (isset($messageCount['error']['code'])) {
             return $messageCount;
         }
-        
+
         $folder = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id, folder_id, display_name FROM ".MAIL_INBOX_FOLDERS_TABLE." WHERE account_id = %d AND folder_id = %s",
+                "SELECT id, folder_id, display_name FROM " . MAIL_INBOX_FOLDERS_TABLE . " WHERE account_id = %d AND folder_id = %s",
                 $accountId,
                 $folderId
             )
         );
 
-        // Get saved email count for the folder
-        $query = $wpdb->prepare(
-            "SELECT COUNT(*) as email_count FROM ".MAIL_INBOX_EMAILS_TABLE." WHERE account_id = %d AND parent_folder_id = %s",
-            $accountId,
-            $folderId
-        );
-        $savedEmailsCountForFolder = $wpdb->get_var($query);
-
         // Store the count in the foldersCount array
-        $newEmailsForFolder = $messageCount - $savedEmailsCountForFolder;
-
-        if($newEmailsForFolder > 0){
+        if ($messageCount > 0) {
             $foldersCount[] = [
                 'folder_name' => $folder->display_name,
                 'local_folder_id' => $folder->id,
                 'folder_id' => $folder->folder_id,
-                'count' => $newEmailsForFolder
+                'count' => $messageCount
             ];
         }
 
         // Add the new emails for specified folder
-        $newEmailsCount += $newEmailsForFolder;
+        $newEmailsCount += $messageCount;
     } else {
         $folders = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT id, folder_id, display_name FROM ".MAIL_INBOX_FOLDERS_TABLE." WHERE account_id = %d",
+                "SELECT id, folder_id, display_name FROM " . MAIL_INBOX_FOLDERS_TABLE . " WHERE account_id = %d",
                 $accountId
             )
         );
-    
+
         // Sync emails for each folder when no specific folder ID is provided
         foreach ($folders as $folder) {
             $folderId = $folder->folder_id;
-            
+
             // Get saved email count for the folder
-            $query = $wpdb->prepare(
-                "SELECT COUNT(*) as email_count FROM ".MAIL_INBOX_EMAILS_TABLE." WHERE account_id = %d AND parent_folder_id = %s",
+            $lastSavedEmail = $wpdb->get_row($wpdb->prepare(
+                "SELECT received_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE account_id = %d AND parent_folder_id = %s ORDER BY received_datetime DESC LIMIT 1",
                 $accountId,
                 $folderId
-            );
-            $savedEmailsCountForFolder = $wpdb->get_var($query);
+            ));
+
+            $iso8601Date = '';
+            if ($lastSavedEmail) {
+                $iso8601Date = localToISOTimestamp($lastSavedEmail->received_datetime);
+            }
 
             // Sync new emails for the folder
-            $messageCount = countEmailsByFolderId($accessToken, $accountId, $folderId);
-            
+            $messageCount = countEmailsByFolderId($accessToken, $folderId, $iso8601Date);
+
             if (isset($messageCount['error']['code'])) {
                 return $messageCount;
             }
 
-            // Calculate new emails for the folder
-            $newEmailsForFolder = $messageCount - $savedEmailsCountForFolder;
-
-            if($newEmailsForFolder > 0){
+            if ($messageCount > 0) {
                 $foldersCount[] = [
                     'folder_name' => $folder->display_name,
                     'local_folder_id' => $folder->id,
                     'folder_id' => $folder->folder_id,
-                    'count' => $newEmailsForFolder
+                    'count' => $messageCount
                 ];
             }
 
             // Add the new emails for each folder to the total count
-            $newEmailsCount += $newEmailsForFolder;
+            $newEmailsCount += $messageCount;
         }
     }
 
@@ -268,7 +276,8 @@ function getNewEmailsCount($accountId, $folderId = '')
     ];
 }
 
-function getNewEmails($accountId, $folder_id = ''){
+function getNewEmails($accountId, $folder_id = '')
+{
     $accessToken = getMicrosoftAccessToken($accountId);
 
     global $wpdb;
@@ -279,7 +288,7 @@ function getNewEmails($accountId, $folder_id = ''){
     // If a folder ID is provided, adjust the endpoint to fetch emails from that specific folder
     if (!empty($folder_id)) {
         $query = $wpdb->prepare(
-            "SELECT received_datetime FROM ".MAIL_INBOX_EMAILS_TABLE." WHERE parent_folder_id = %s ORDER BY ID DESC",
+            "SELECT received_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE parent_folder_id = %s ORDER BY ID DESC",
             $folder_id
         );
 
@@ -296,7 +305,7 @@ function getNewEmails($accountId, $folder_id = ''){
         $emailEndpoint .= '&$filter=receivedDateTime ge ' . $iso8601Date;
     }
 
-    $response = wp_remote_get(GRAPH_API_BASE_ENDPOINT.$emailEndpoint, [
+    $response = wp_remote_get(GRAPH_API_BASE_ENDPOINT . $emailEndpoint, [
         'headers' => [
             'Authorization' => 'Bearer ' . $accessToken,
             'Accept' => 'application/json',
@@ -304,19 +313,19 @@ function getNewEmails($accountId, $folder_id = ''){
     ]);
 
     $emails = json_decode($response['body'], true);
-    
+
     if (isset($emails['error']['code'])) {
         if ($emails['error']['code'] === 'InvalidAuthenticationToken') {
             return $emails;
         }
     }
- 
+
     $emails_with_attachments = [];
 
     foreach ($emails['value'] as $email) {
         $emailId = $email['id'];
         $conversationId = $email['conversationId'];
-    
+
         if (!is_email_synced($emailId, $conversationId)) {
             if ($email['hasAttachments']) {
                 $attachments_response = wp_remote_get(GRAPH_API_BASE_ENDPOINT . "messages/{$email['id']}/attachments", [
@@ -326,7 +335,7 @@ function getNewEmails($accountId, $folder_id = ''){
                     ]
                 ]);
 
-                if ( is_wp_error( $attachments_response ) ) {
+                if (is_wp_error($attachments_response)) {
                     error_log('Failed after multiple attempts: ' . $attachments_response->get_error_message());
                     continue;
                 }
@@ -343,7 +352,7 @@ function getNewEmails($accountId, $folder_id = ''){
                 // Create a specific directory for each email
                 $uniqueId = uniqid();
                 $emailDir = $baseDir . $uniqueId;
-                $localDir = 'uploads/email-attachments/'.$uniqueId;
+                $localDir = 'uploads/email-attachments/' . $uniqueId;
 
                 if (!is_dir($emailDir)) {
                     mkdir($emailDir, 0777, true);
@@ -363,7 +372,7 @@ function getNewEmails($accountId, $folder_id = ''){
                     }
 
                     // Add the local path to the attachment details
-                    $email['attachments'][$key]['saved_path'] = $localDir.'/'.$attachment['name'];
+                    $email['attachments'][$key]['saved_path'] = $localDir . '/' . $attachment['name'];
 
                     // Replace inline content ID with base64 data URI
                     if (isset($attachment['contentId']) && isset($attachment['contentBytes']) && strpos($email['body']['content'], "cid:" . $attachment['contentId']) !== false) {
