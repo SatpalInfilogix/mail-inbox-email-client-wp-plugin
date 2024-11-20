@@ -60,11 +60,11 @@ export default {
             searchingUsers: false,
         };
     },
-    computed:{
-        isWoocommerceInstalled(){
+    computed: {
+        isWoocommerceInstalled() {
             return window.mailInbox.isWoocommerceInstalled;
         },
-        isAwesomeSupportInstalled(){
+        isAwesomeSupportInstalled() {
             return window.mailInbox.isAwesomeSupportInstalled;
         },
     },
@@ -79,7 +79,7 @@ export default {
                 { title: 'Attachments', value: 'attachments' },
                 { title: 'Category', value: 'category' }
             ];
-            
+
             if (window.mailInbox.isAwesomeSupportInstalled) {
                 baseHeaders.push({ title: 'Ticket', value: 'selectedTicket' });
             }
@@ -209,7 +209,7 @@ export default {
                 const apiResponse = await response.json();
                 this.isSearching = false;
                 //this.$emit('loadingText', '');
-                
+
                 if (apiResponse.errors) {
                     console.error('GraphQL Errors:', apiResponse.errors);
                 }
@@ -282,7 +282,7 @@ export default {
                 this.loading = false;
             }
         },
-        editPostLink(id){
+        editPostLink(id) {
             return `${window.mailInbox.adminUrl}post.php?post=${id}&action=edit`;
         },
         async fetchTags() {
@@ -470,6 +470,28 @@ export default {
                 this.showSnackbar(`Failed to assign category`, 'error');
             }
         },
+        convertToIST(dateString) {
+            // Convert the string to a Date object (appending ' UTC' to treat it as UTC)
+            const date = new Date(dateString + ' UTC');
+
+            // Convert to IST using the Asia/Kolkata timezone
+            const options = {
+                timeZone: 'Asia/Kolkata', // Specify IST timezone
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+
+            const formatter = new Intl.DateTimeFormat('en-IN', options);
+            const formattedDate = formatter.format(date);
+
+            const [day, month, year, hour, minute, second] = formattedDate.split(/[\s,\/:-]+/);
+            return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+        },
         showSnackbar(message, color = 'success') {
             this.snackbarMessage = message;
             this.snackbarColor = color;
@@ -533,7 +555,7 @@ export default {
             if (apiResponse.success) {
                 const email = this.loadedMails.find(mail => mail.id === emailId);
                 email.ticketLink = this.editPostLink(ticketId);
-                
+
                 this.showSnackbar(`Ticket successfully assigned!`, 'success');
             } else {
                 this.showSnackbar(`Failed to assign ticket`, 'error');
@@ -758,8 +780,8 @@ export default {
 
                     <td>
                         <div style="width: 128px;">
-                            <div class="text-caption" :class="{ 'font-weight-black' : !item.isRead }"><v-icon class="text-grey-darken-2 me-1">mdi-calendar</v-icon>{{ item.received_datetime.split(' ')[0] }}</div>
-                            <div class="text-caption" :class="{ 'font-weight-black' : !item.isRead }"><v-icon class="text-grey-darken-2 me-1">mdi-clock</v-icon>{{ item.received_datetime.split(' ')[1] }}</div>
+                            <div class="text-caption" :class="{ 'font-weight-black' : !item.isRead }"><v-icon class="text-grey-darken-2 me-1">mdi-calendar</v-icon>{{ convertToIST(item.received_datetime).split(' ')[0] }}</div>
+                            <div class="text-caption" :class="{ 'font-weight-black' : !item.isRead }"><v-icon class="text-grey-darken-2 me-1">mdi-clock</v-icon>{{ convertToIST(item.received_datetime).split(' ')[1] }}</div>
                         </div>
                     </td>
 
