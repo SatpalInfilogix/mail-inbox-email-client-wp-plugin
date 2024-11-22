@@ -58,6 +58,7 @@ export default {
             users: [],
             userSearch: '',
             searchingUsers: false,
+            loadingMoreEmails: false
         };
     },
     computed: {
@@ -140,6 +141,7 @@ export default {
             if (this.loading || this.allLoaded || !this.activeFolder) return;
 
             this.loading = true;
+            this.loadingMoreEmails = true;
 
             const agentIdValue = this.filters.agentId ? parseInt(this.filters.agentId) : null;
 
@@ -268,6 +270,8 @@ export default {
                     } else {
                         this.loadedMails = [...this.loadedMails, ...newEmails];
                     }
+
+                    this.loadingMoreEmails = false;
 
                     //this.$emit('loading', '');
                     if (newEmails.length < 20) {
@@ -661,7 +665,7 @@ export default {
         }
     },
     template: `
-       <v-container fluid style="height: calc(100vh - 180px)">
+       <v-container fluid style="height: calc(100vh - 210px)" class="position-relative">
         <!-- Data Table -->
         <v-progress-linear
             color="primary"
@@ -906,8 +910,9 @@ export default {
                     </td>
                 </tr>
             </template>
-
         </v-data-table>
+
+        <div class="position-absolute bottom-0 w-100 text-center" v-if="loadingMoreEmails">Loading emails...</div>
     </v-container>
 
     <v-menu

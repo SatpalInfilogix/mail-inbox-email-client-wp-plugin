@@ -350,8 +350,9 @@ export default {
             await this.syncEmails();
         }
     },
-    mounted() {
-        this.fetchConnectedAccounts();
+    async mounted() {
+        await this.fetchConnectedAccounts();
+        this.syncEmailData();
     },
     template: `
         <v-col class="mail-sidebar" style="height: 80vh; background-color: #f5f5f5; border: 1px solid #ddd; overflow-y: auto;">

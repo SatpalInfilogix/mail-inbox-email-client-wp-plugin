@@ -51,6 +51,7 @@ export default {
         },
         selectFolder(folder) {
             this.$emit('setActiveFolder', folder);
+            this.$emit('syncFolderEmails', folder)
         },
         showFolderMenu(event, folder) {
             this.$emit('showFolderMenu', event, folder);

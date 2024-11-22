@@ -40,6 +40,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 agents: [],
                 filterAgents: [],
                 selectedFilterAgent: null,
+                isPreviewEmailLoading: false
             };
         },
         computed: {
@@ -113,6 +114,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 return await response.json();
             },
             async viewEmail(emailId) {
+                this.isPreviewEmailLoading = true;
+
+                this.showPreview = true;
+                if(parseFloat(this.previewWidth) <= 43){
+                    this.previewWidth = 43;
+                }
+
+                this.updateReadStatus(emailId);
+                
+                let calculatedContentWidth = this.contentWidth === this.previewWidth ? this.contentWidth : this.contentWidth - this.previewWidth;
+
+                this.updateWidths({
+                    sidebarWidth: parseFloat(this.sidebarWidth),
+                    contentWidth: calculatedContentWidth,
+                    previewWidth: parseFloat(this.previewWidth),
+                });
+
                 const query = `
                     query {
                         getEmailById(id: ${emailId}) {
@@ -155,21 +173,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 const apiResponse = await response.json();
                 this.activeEmail = apiResponse.data.getEmailById;
-                this.showPreview = true;
-
-                if(parseFloat(this.previewWidth) <= 43){
-                    this.previewWidth = 43;
-                }
-
-                let readStatusResponse = this.updateReadStatus(emailId);
-                
-                let calculatedContentWidth = this.contentWidth === this.previewWidth ? this.contentWidth : this.contentWidth - this.previewWidth;
-
-                this.updateWidths({
-                    sidebarWidth: parseFloat(this.sidebarWidth),
-                    contentWidth: calculatedContentWidth,
-                    previewWidth: parseFloat(this.previewWidth),
-                });
+                this.isPreviewEmailLoading = false;
             },
             async viewEmailIfPreviewOpened(emailId){
                 if(this.showPreview){
@@ -482,7 +486,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             ></divider-layout>
 
                             <v-col v-if="showPreview" :style="{ flexBasis: computedPreviewWidth + '%', maxWidth: computedPreviewWidth + '%' }" class="d-flex flex-column pa-0">
-                                <mail-preview :email="activeEmail" @close-preview="showPreview = false"></mail-preview>
+                                <mail-preview :email="activeEmail" :isLoading="isPreviewEmailLoading" @close-preview="showPreview = false"></mail-preview>
                             </v-col>
                         </div>
                     </v-container>

@@ -5,6 +5,10 @@ export default {
             type: Object,
             required: true
         },
+        isLoading: {
+            type: Boolean,
+            default: true
+        }
     },
     data() {
         return {
@@ -87,21 +91,34 @@ export default {
     watch: {
         email: {
             handler() {
-                this.updateIframeContent();
+                if(this.email){
+                    this.updateIframeContent();
+                }
             },
             deep: true,
         },
     },
     mounted() {
-        this.updateIframeContent();
+        if(this.email){
+            this.updateIframeContent();
+        }
     },
     template: `
         <v-container fluid class="pt-0">
             <v-card class="mx-auto" max-width="800">
             <!-- Email Content -->
             <v-card-text style="overflow: auto; max-height: 100vh;">
+                <v-overlay
+                    :model-value="isLoading"
+                    class="align-center justify-center"
+                    contained
+                >
+                    <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                    <span class="ml-3">Loading...</span>
+                </v-overlay>
+                
                 <!-- Email Headers -->
-                <div class="email-headers" ref="emailHeaders">
+                <div class="email-headers" ref="emailHeaders" v-if="email">
                     <!-- From -->
                     <div class="d-flex justify-space-between">
                         <p class="text-body-2 my-1" v-for="toRecipient in JSON.parse(email.to_recipients)">
