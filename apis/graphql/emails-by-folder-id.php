@@ -195,7 +195,15 @@ add_action('graphql_register_types', function () {
 
             // If no user ID is associated, return an empty array
             if (empty($associated_user->user_id)) {
-                return [];
+                $email = json_decode($email->sender)->emailAddress->address;
+                $user = get_user_by('email', $email);    
+                if(!isset($user->data)){
+                    return [];
+                }
+
+                $associatedUserId = $user->data->ID;
+            } else{
+                $associatedUserId = $associated_user->user_id;
             }
 
             // Query tickets related to the user in Awesome Support
@@ -207,7 +215,7 @@ add_action('graphql_register_types', function () {
                 WHERE p.post_type = 'ticket' AND p.post_author = %d
                 ORDER BY p.post_date DESC
                 LIMIT 5
-            ", $associated_user->user_id);
+            ", $associatedUserId);
 
             $tickets = $wpdb->get_results($tickets_query);
 
