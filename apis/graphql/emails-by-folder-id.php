@@ -1,4 +1,34 @@
 <?php
+function associateEmailAdditionalInfo($emailId, $column, $value) {
+    global $wpdb;
+    $table_name = MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE;
+
+    // Check if user_id already exists for this email_id
+    $email_exists = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE email_id = %d", $emailId));
+
+    if (!$email_exists) {
+        // Insert new record
+        $wpdb->insert(
+            $table_name,
+            [
+                'email_id' => $emailId,
+                $column => $value
+            ],
+            ['%d', '%d']
+        );
+    } else {
+        // Update existing record
+        $wpdb->update(
+            $table_name,
+            [$column => $value],
+            ['email_id' => $emailId],
+            ['%d'],
+            ['%d']
+        );
+    }
+}
+
+
 add_action('graphql_register_types', function () {
     // Register EmailAdditionalInfo type
     register_graphql_object_type('EmailAdditionalInfo', [
@@ -344,6 +374,8 @@ add_action('graphql_register_types', function () {
                         LEFT JOIN " . MAIL_INBOX_TAGS_TABLE . " AS t ON ai.tag_id = t.id
                         WHERE ai.email_id = %d
                     ";
+                    $emailId = $email->id;
+
                     $prepared_query = $wpdb->prepare($query, intval($email->id));
                     $additional_info = $wpdb->get_row($prepared_query);
                     
@@ -361,13 +393,50 @@ add_action('graphql_register_types', function () {
                             } 
                         }
                     }
-                    
+
+                    $defaultTicketAssignee = null;
+                    if(!$additional_info->agent_id){
+                        // Query the associated user ID from the additional info table
+                        $table_name = MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE;
+                        $associated_user = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM $table_name WHERE email_id = %d", $email->id));
+
+                        // If no user ID is associated, return an empty array
+                        if (empty($associated_user->user_id)) {
+                            $email = json_decode($email->sender)->emailAddress->address;
+                            $user = get_user_by('email', $email);    
+                            if(isset($user->data)){
+                                $associatedUserId = $user->data->ID;
+
+                                associateEmailAdditionalInfo($emailId, 'user_id', $associatedUserId);
+                            }
+                        } else{
+                            $associatedUserId = $associated_user->user_id;
+                        }
+
+                        // Query tickets related to the user in Awesome Support
+                        $tickets_query = $wpdb->prepare("
+                            SELECT p.ID as id, p.post_title as title, p.post_date as created_at, p.post_modified as updated_at,
+                                (SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = p.ID AND meta_key = '_status') AS status,
+                                (SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = p.ID AND meta_key = '_priority') AS priority
+                            FROM {$wpdb->posts} AS p
+                            WHERE p.post_type = 'ticket' AND p.post_author = %d
+                            ORDER BY p.post_date DESC
+                            LIMIT 1
+                        ", $associatedUserId);
+
+                        $ticket = $wpdb->get_row($tickets_query);
+                        if($ticket){
+                            $defaultTicketAssignee = get_post_meta($ticket->id, '_wpas_assignee', true);
+                            associateEmailAdditionalInfo($emailId, 'agent_id', $defaultTicketAssignee);
+                        }
+                    }
+
                     return [
                         'id' => $additional_info->id ?? null,
                         'email_id' => $additional_info->email_id ?? null,
                         'tag_id' => $additional_info->tag_id ?? null,
                         'tag_name' => $additional_info->tag_name ?? null,
-                        'agent_id' => $additional_info->agent_id ?? null,
+                        'agent_id' => $additional_info->agent_id ?? $defaultTicketAssignee,
                         'user_id' => $additional_info->user_id ?? null,
                         'ticket_id' => $additional_info->ticket_id ?? null,
                         'ticket_title' => $ticketTitle ?? null,
@@ -473,121 +542,137 @@ add_action('graphql_register_types', function () {
         ],
         'resolve' => function ($source, $args, $context, $info) {
             global $wpdb;
-        
+    
             if (empty($args['folder_id'])) {
                 return null; // No folder_id provided
             }
-        
+    
             $limit = isset($args['limit']) ? absint($args['limit']) : 10;
             $offset = isset($args['offset']) ? absint($args['offset']) : 0;
             $folder_id = intval($args['folder_id']);
-        
+    
             // Start constructing the query with the main table
             $query = "SELECT e.* FROM " . MAIL_INBOX_EMAILS_TABLE . " AS e";
-        
-            // If agentId filter is provided, join with the additional info table
-            if (!empty($args['filters']['agentId']) || !empty($args['filters']['tags'])) {
-                $query .= " LEFT JOIN " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . " AS ai ON e.id = ai.email_id";
-            }
-
-            if (!empty($args['filters']['categories'])) {
-                $query .= " LEFT JOIN " . MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE . " AS em ON e.id = em.email_id";
-            }
-            
-        
+    
+            // Initialize WHERE conditions and parameters
+            $conditions = [];
+            $query_params = [];
+    
             // Initial WHERE clause for folder_id filter
-            $query .= " WHERE e.folder_id = %d";
-            $query_params = [$folder_id];
-        
+            $conditions[] = "e.folder_id = %d";
+            $query_params[] = $folder_id;
+    
             // Apply filters if provided
             if (!empty($args['filters'])) {
                 $filters = $args['filters'];
-        
+    
                 // Date range filter
                 if (!empty($filters['startDate'][0]) && !empty($filters['endDate'][0])) {
-                    $query .= " AND e.received_datetime BETWEEN %s AND %s";
+                    $conditions[] = "e.received_datetime BETWEEN %s AND %s";
                     $query_params[] = $filters['startDate'][0];
                     $query_params[] = $filters['endDate'][0];
                 } elseif (!empty($filters['startDate'][0])) {
-                    $query .= " AND e.received_datetime >= %s";
+                    $conditions[] = "e.received_datetime >= %s";
                     $query_params[] = $filters['startDate'][0];
                 } elseif (!empty($filters['endDate'][0])) {
-                    $query .= " AND e.received_datetime <= %s";
+                    $conditions[] = "e.received_datetime <= %s";
                     $query_params[] = $filters['endDate'][0];
                 }
-        
+    
                 // Search by From filter
                 if (!empty($filters['searchFrom'])) {
                     $searchFrom = '%' . $wpdb->esc_like($filters['searchFrom']) . '%';
-                    $query .= " AND (JSON_UNQUOTE(JSON_EXTRACT(e.from, '$.emailAddress.name')) LIKE %s 
-                                OR JSON_UNQUOTE(JSON_EXTRACT(e.from, '$.emailAddress.address')) LIKE %s)";
+                    $conditions[] = "(JSON_UNQUOTE(JSON_EXTRACT(e.sender, '$.emailAddress.name')) LIKE %s 
+                                    OR JSON_UNQUOTE(JSON_EXTRACT(e.sender, '$.emailAddress.address')) LIKE %s)";
                     $query_params[] = $searchFrom;
                     $query_params[] = $searchFrom;
                 }
-        
+    
                 // Search by Subject filter
                 if (!empty($filters['searchSubject'])) {
-                    $searchSubject = '%' . $wpdb->esc_like(wp_strip_all_tags(trim($filters['searchSubject']))) . '%';
-                    $query .= " AND LOWER(REPLACE(REPLACE(REPLACE(e.subject, '<', ''), '>', ''), '/', '')) LIKE LOWER(%s)";
+                    $searchSubject = '%' . $wpdb->esc_like(trim($args['filters']['searchSubject'])) . '%';
+                    $conditions[] = "e.subject LIKE %s";
                     $query_params[] = $searchSubject;
                 }
-        
+    
                 // Keyword filter
                 if (!empty($filters['keyword'])) {
                     $keyword = '%' . $wpdb->esc_like(wp_strip_all_tags(trim($filters['keyword']))) . '%';
-                    $query .= " AND e.body_content LIKE %s";
+                    $conditions[] = "e.body_content LIKE %s";
                     $query_params[] = $keyword;
                 }
-        
+    
                 // Agent ID filter
                 if (!empty($filters['agentId'])) {
                     $agentId = $filters['agentId'];
-
-                    if($agentId > 0){
-                        $query .= " AND ai.agent_id = %d";
+    
+                    if ($agentId > 0) {
+                        $conditions[] = "EXISTS (
+                            SELECT 1 FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . " ai
+                            WHERE ai.email_id = e.id AND ai.agent_id = %d
+                        )";
                         $query_params[] = intval($agentId);
                     } else if ($agentId === -1) {
                         // Filter for cases where agent_id is NULL or 0
-                        $query .= " AND (ai.agent_id IS NULL OR ai.agent_id = 0)";
-                    } 
+                        $conditions[] = "NOT EXISTS (
+                            SELECT 1 FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . " ai
+                            WHERE ai.email_id = e.id AND ai.agent_id IS NOT NULL AND ai.agent_id > 0
+                        )";
+                    }
                 }
-        
-                // Agent ID filter
+    
+                // Tags filter
                 if (!empty($filters['tags'])) {
                     $tagFilter = $filters['tags'];
                     if ($tagFilter == 'With Tags') {
                         // Only get records with a tag
-                        $query .= " AND ai.tag_id IS NOT NULL AND ai.tag_id > 0";
+                        $conditions[] = "EXISTS (
+                            SELECT 1 FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . " ai
+                            WHERE ai.email_id = e.id AND ai.tag_id IS NOT NULL AND ai.tag_id > 0
+                        )";
                     } else if ($tagFilter == 'Without Tags') {
                         // Only get records without a tag
-                        $query .= " AND (ai.tag_id IS NULL OR ai.tag_id = 0)";
+                        $conditions[] = "NOT EXISTS (
+                            SELECT 1 FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . " ai
+                            WHERE ai.email_id = e.id AND ai.tag_id IS NOT NULL AND ai.tag_id > 0
+                        )";
                     }
                 }
-
+    
                 // Categories filter
                 if (!empty($filters['categories'])) {
                     $categoryFilter = $filters['categories'];
-                    
+    
                     if ($categoryFilter == 'With Categories') {
                         // Only get records with a category
-                        $query .= " AND em.category_id IS NOT NULL AND em.category_id > 0";
+                        $conditions[] = "EXISTS (
+                            SELECT 1 FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE . " em
+                            WHERE em.email_id = e.id AND em.category_id IS NOT NULL AND em.category_id > 0
+                        )";
                     } else if ($categoryFilter == 'Without Categories') {
                         // Only get records without a category
-                        $query .= " AND (em.category_id IS NULL OR em.category_id = 0)";
+                        $conditions[] = "NOT EXISTS (
+                            SELECT 1 FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE . " em
+                            WHERE em.email_id = e.id AND em.category_id IS NOT NULL AND em.category_id > 0
+                        )";
                     }
                 }
             }
-        
-            // Add limit and offset
+    
+            // Assemble the WHERE clause
+            if (!empty($conditions)) {
+                $query .= " WHERE " . implode(" AND ", $conditions);
+            }
+    
+            // Add ORDER BY and LIMIT/OFFSET
             $query .= " ORDER BY e.id DESC LIMIT %d OFFSET %d";
             $query_params[] = $limit;
             $query_params[] = $offset;
-        
+    
             // Prepare and execute the query
-            $prepared_query = $wpdb->prepare($query, ...$query_params);
+            $prepared_query = $wpdb->prepare($query, $query_params);
             $emails = $wpdb->get_results($prepared_query);
-        
             return $emails;
         },
-    ]);
+    ]);    
 });
