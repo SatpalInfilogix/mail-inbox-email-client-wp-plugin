@@ -90,6 +90,27 @@ export default {
         selectFolder(folder) {
             this.$emit('setActiveFolder', folder);
         },
+        closeMenuOnScroll() {
+            this.menu = false;
+        }
+    },
+    mounted() {
+        // Add a scroll event listener to close the menu
+        window.addEventListener('scroll', this.closeMenuOnScroll);
+
+        const sidebar = document.querySelector('.mail-sidebar');
+        if (sidebar) {
+            sidebar.addEventListener('scroll', this.closeMenuOnScroll);
+        }
+    },
+    beforeDestroy() {
+        // Remove the scroll event listener
+        window.removeEventListener('scroll', this.closeMenuOnScroll);
+
+        const sidebar = document.querySelector('.mail-sidebar');
+        if (sidebar) {
+            sidebar.addEventListener('scroll', this.closeMenuOnScroll);
+        }
     },
     template: `
     <v-expand-transition v-if="account.folders.length > 0">
