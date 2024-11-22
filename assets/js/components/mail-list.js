@@ -254,6 +254,12 @@ export default {
                                 id: email.additionalInfo.order_id,
                                 order_number: email.additionalInfo.order_title,
                             };
+                        } else if(email.orders.length > 0){
+                            email.order = {
+                                id: email.orders[0].id,
+                                order_number: email.orders[0].order_number,
+                            };
+                            email.orderLink = this.editPostLink(email.order.id);
                         }
 
                         if (email.additionalInfo.ticket_id) {
@@ -261,6 +267,12 @@ export default {
                                 id: email.additionalInfo.ticket_id,
                                 title: email.additionalInfo.ticket_title,
                             };
+                        } else if(email.tickets.length > 0){
+                            email.ticket = {
+                                id: email.tickets[0].id,
+                                title: email.tickets[0].title,
+                            };
+                            email.ticketLink = this.editPostLink(email.ticket.id);
                         }
                         return email;
                     });
