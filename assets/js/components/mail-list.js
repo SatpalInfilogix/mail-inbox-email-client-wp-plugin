@@ -647,8 +647,7 @@ export default {
         handleScroll(event) {
             const { scrollTop, scrollHeight, clientHeight } = event.target;
 
-            // Check if the user has scrolled near the bottom (with a 250px threshold)
-            if (scrollTop + clientHeight >= scrollHeight - 250) {
+            if (scrollTop + clientHeight >= scrollHeight - 350) {
                 const newOffset = this.loadedMails.length;
 
                 this.loadEmails(newOffset);
@@ -1045,7 +1044,15 @@ export default {
             </template>
         </v-data-table>
 
-        <div class="position-absolute bottom-0 w-100 text-center" v-if="loadingMoreEmails">Loading emails...</div>
+        <v-snackbar
+            v-model="loadingMoreEmails"
+            color="#5865f2"
+            location="bottom"
+            :timeout="-1"
+            elevation="0"
+            >
+            Loading emails...
+        </v-snackbar>
     </v-container>
 
     <v-menu
