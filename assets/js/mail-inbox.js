@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 filterAgents: [],
                 selectedFilterAgent: null,
                 isPreviewEmailLoading: false,
-                expanadFilters: false
+                expandedFilters: false
             };
         },
         computed: {
@@ -342,11 +342,11 @@ document.addEventListener("DOMContentLoaded", function () {
                             <!-- Content Column -->
                             <v-col :style="{ flexBasis: computedContentWidth + '%', maxWidth: computedContentWidth + '%' }" class="d-flex flex-column pa-0">
                                 <v-container class="reduce-dt-spacing">
-                                    <v-btn size="small" icon="mdi-filter-outline" color="primary" @click="expanadFilters=true" v-if="!expanadFilters"></v-btn>
-                                    <v-row v-if="expanadFilters">
+                                    <v-btn size="small" icon="mdi-filter-outline" color="primary" @click="expandedFilters=true" v-if="!expandedFilters"></v-btn>
+                                    <v-row v-if="expandedFilters">
                                         <v-col cols="12" sm="6" md="4">
                                         <div class="d-flex ga-2">
-                                            <v-btn size="small" icon="mdi-filter-outline" color="primary" @click="expanadFilters=false"></v-btn>
+                                            <v-btn size="small" icon="mdi-filter-outline" color="primary" @click="expandedFilters=false"></v-btn>
                                             <vue-date-picker v-model="filterDate" range :max-date="new Date()" placeholder="Filter emails by date" :enable-time-picker="false" multi-calendars text-input @update:model-value="onDateChange"></vue-date-picker>
                                         </v-col>
                                         <v-col cols="12" sm="6" md="4">
@@ -379,7 +379,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                         </v-col>
                                     </v-row>
                                     
-                                    <v-row v-if="expanadFilters">
+                                    <v-row v-if="expandedFilters">
                                         <v-col cols="12" sm="6" md="3">
                                             <v-text-field
                                                 v-model="searchSubject"
@@ -468,6 +468,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     :filters="filters"
                                     :agents="agents"
                                     :isPreviewOpened="showPreview"
+                                    :isExpandedFilters="expandedFilters"
                                     @view-email="viewEmail"
                                     @updateReadStatus="updateReadStatus"
                                     @view-email-if-preview-opened="viewEmailIfPreviewOpened"

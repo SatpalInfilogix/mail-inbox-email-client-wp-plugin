@@ -5,7 +5,8 @@ export default {
     name: 'MailList',
     components: {
         AssignTagDialog,
-        AssignAgentDialog
+        AssignAgentDialog,
+        VueDatePicker
     },
     props: {
         activeAccount: {
@@ -31,6 +32,10 @@ export default {
         agents: {
             type: Array,
             required: true
+        },
+        isExpandedFilters: {
+            type: Boolean,
+            default: false
         }
     },
     data() {
@@ -59,7 +64,10 @@ export default {
             userSearch: '',
             searchingUsers: false,
             loadingMoreEmails: false,
-            emailCounts: {}
+            emailCounts: {},
+            selectedCountDate: new Date(),
+            loadingEmailCounts: true,
+            selectedCountsFilterAgent: null
         };
     },
     computed: {
@@ -134,14 +142,25 @@ export default {
         async fetchEmailCounts() {
             // GraphQL query
             const query = `
-                query GetEmailCounts($folderId: Int) {
-                    emailCounts(folder_id: $folderId) {
+                query GetEmailCounts($folderId: Int, $receivedDate: String, $agentId: Int) {
+                    emailCounts(folder_id: $folderId, received_date: $receivedDate, agent_id: $agentId) {
                         assignedEmailsCount
                         unassignedEmailsCount
                     }
                 }
             `;
-            
+
+            this.loadingEmailCounts = true;
+
+            const formatDate = (date) => {
+                if (!date) return null;
+                const d = new Date(date);
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, "0"); // Add leading zero
+                const day = String(d.getDate()).padStart(2, "0"); // Add leading zero
+                return `${year}-${month}-${day}`;
+            };
+
             try {
                 const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
                     method: 'POST',
@@ -152,26 +171,29 @@ export default {
                         query,
                         variables: {
                             folderId: parseInt(this.activeFolder?.id) || null,
+                            receivedDate: formatDate(this.selectedCountDate),
+                            agentId: parseInt(this.selectedCountsFilterAgent?.value) || null
                         },
                     }),
                 });
-            
+
                 if (!response.ok) {
                     throw new Error(`GraphQL error: ${response.statusText} (HTTP ${response.status})`);
                 }
-            
+
                 const result = await response.json();
-            
+                this.loadingEmailCounts = false;
+
                 // Check for GraphQL errors in the response
                 if (result.errors) {
                     throw new Error(`GraphQL error: ${result.errors.map(err => err.message).join(', ')}`);
                 }
-            
-                return result.data.emailCounts;
+
+                this.emailCounts = result.data.emailCounts;
             } catch (error) {
                 console.error("Error fetching email counts:", error.message);
                 throw error; // Rethrow the error so the caller can handle it
-            }        
+            }
         },
         async loadEmails(offset = 0) {
             //this.$emit('loadingText', 'Loading emails...');
@@ -333,7 +355,7 @@ export default {
                         this.allLoaded = true;
                     }
 
-                    this.emailCounts = await this.fetchEmailCounts();
+                    await this.fetchEmailCounts();
                 } else {
                     this.allLoaded = true;
                 }
@@ -674,6 +696,18 @@ export default {
             this.showUnAssignAgentModal = false;
             this.currentEmailData = null;
         },
+        async handleCountDateChange(newDate) {
+            this.selectedCountDate = newDate;
+            this.fetchEmailCounts();
+        },
+        handleCountFilterAgent(item) {
+            this.selectedCountsFilterAgent = item;
+            this.fetchEmailCounts();
+        },
+        clearSelection() {
+            this.selectedCountsFilterAgent = null;
+            this.fetchEmailCounts();
+        },
     },
     watch: {
         activeFolder: {
@@ -722,7 +756,7 @@ export default {
         }
     },
     template: `
-       <v-container fluid style="height: calc(100vh - 210px)" class="position-relative">
+       <v-container fluid :style="{ height: isExpandedFilters ? 'calc(100vh - 220px)' : 'calc(100vh - 160px)' }" class="position-relative pt-0">
         <!-- Data Table -->
         <v-progress-linear
             color="primary"
@@ -730,7 +764,47 @@ export default {
             v-if="isSearching"
         ></v-progress-linear>
 
-        <p class="ma-0" v-if="emailCounts.unassignedEmailsCount">{{emailCounts.unassignedEmailsCount}} emails not resolved yet</p>
+        <v-skeleton-loader
+            v-if="loadingEmailCounts"
+            type="text"
+            class="ma-0 w-50"
+        ></v-skeleton-loader>
+
+        <div v-else class="d-flex ga-3 align-center">
+            <p class="ma-0 text-body-1">{{emailCounts.unassignedEmailsCount}} emails not resolved for </p>
+            <vue-date-picker v-model="selectedCountDate" :max-date="new Date()" class="w-25" placeholder="Enter date" :enable-time-picker="false" text-input auto-apply @update:model-value="handleCountDateChange"></vue-date-picker>
+            <div class="w-25">
+                <v-select
+                    label="Select Agent"
+                    v-model="selectedCountsFilterAgent"
+                    :items="agents"
+                    item-text="name"
+                    item-value="id"
+                    return-object
+                    density="compact"
+                    outlined
+                    hide-details
+                    
+                >
+                    <!-- Display Selected Tag as a Chip -->
+                    <template v-slot:selection="{ item }">
+                        {{ item.props.title.name }}
+                        <v-icon @click.stop="clearSelection" class="position-absolute right-0">mdi-close</v-icon>
+                    </template>
+                                        
+                    <!-- Display Each Dropdown Item with a Chip -->
+                    <template v-slot:item="{ item, attrs }">
+                        <v-list-item
+                            v-bind="attrs"
+                            :key="item.id"
+                            @click="handleCountFilterAgent(item)"
+                        >
+                            <v-list-item-content>{{ item.raw.name }}</v-list-item-content>
+                        </v-list-item>
+                    </template>
+                </v-select>
+            </div>
+        </div>
 
         <v-data-table
             ref="mailDataTable"
