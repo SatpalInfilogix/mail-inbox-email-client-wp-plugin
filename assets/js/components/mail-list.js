@@ -58,7 +58,8 @@ export default {
             users: [],
             userSearch: '',
             searchingUsers: false,
-            loadingMoreEmails: false
+            loadingMoreEmails: false,
+            emailCounts: {}
         };
     },
     computed: {
@@ -129,6 +130,48 @@ export default {
             }
 
             this.$emit('viewEmailIfPreviewOpened', row.id);
+        },
+        async fetchEmailCounts() {
+            // GraphQL query
+            const query = `
+                query GetEmailCounts($folderId: Int) {
+                    emailCounts(folder_id: $folderId) {
+                        assignedEmailsCount
+                        unassignedEmailsCount
+                    }
+                }
+            `;
+            
+            try {
+                const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query,
+                        variables: {
+                            folderId: parseInt(this.activeFolder?.id) || null,
+                        },
+                    }),
+                });
+            
+                if (!response.ok) {
+                    throw new Error(`GraphQL error: ${response.statusText} (HTTP ${response.status})`);
+                }
+            
+                const result = await response.json();
+            
+                // Check for GraphQL errors in the response
+                if (result.errors) {
+                    throw new Error(`GraphQL error: ${result.errors.map(err => err.message).join(', ')}`);
+                }
+            
+                return result.data.emailCounts;
+            } catch (error) {
+                console.error("Error fetching email counts:", error.message);
+                throw error; // Rethrow the error so the caller can handle it
+            }        
         },
         async loadEmails(offset = 0) {
             //this.$emit('loadingText', 'Loading emails...');
@@ -254,7 +297,7 @@ export default {
                                 id: email.additionalInfo.order_id,
                                 order_number: email.additionalInfo.order_title,
                             };
-                        } else if(email.orders.length > 0){
+                        } else if (email.orders.length > 0) {
                             email.order = {
                                 id: email.orders[0].id,
                                 order_number: email.orders[0].order_number,
@@ -267,7 +310,7 @@ export default {
                                 id: email.additionalInfo.ticket_id,
                                 title: email.additionalInfo.ticket_title,
                             };
-                        } else if(email.tickets.length > 0){
+                        } else if (email.tickets.length > 0) {
                             email.ticket = {
                                 id: email.tickets[0].id,
                                 title: email.tickets[0].title,
@@ -289,6 +332,8 @@ export default {
                     if (newEmails.length < 20) {
                         this.allLoaded = true;
                     }
+
+                    this.emailCounts = await this.fetchEmailCounts();
                 } else {
                     this.allLoaded = true;
                 }
@@ -684,6 +729,8 @@ export default {
             indeterminate
             v-if="isSearching"
         ></v-progress-linear>
+
+        <p class="ma-0" v-if="emailCounts.unassignedEmailsCount">{{emailCounts.unassignedEmailsCount}} emails not resolved yet</p>
 
         <v-data-table
             ref="mailDataTable"

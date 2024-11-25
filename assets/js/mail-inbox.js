@@ -40,7 +40,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 agents: [],
                 filterAgents: [],
                 selectedFilterAgent: null,
-                isPreviewEmailLoading: false
+                isPreviewEmailLoading: false,
+                expanadFilters: false
             };
         },
         computed: {
@@ -341,9 +342,12 @@ document.addEventListener("DOMContentLoaded", function () {
                             <!-- Content Column -->
                             <v-col :style="{ flexBasis: computedContentWidth + '%', maxWidth: computedContentWidth + '%' }" class="d-flex flex-column pa-0">
                                 <v-container class="reduce-dt-spacing">
-                                    <v-row>
+                                    <v-btn size="small" icon="mdi-filter-outline" color="primary" @click="expanadFilters=true" v-if="!expanadFilters"></v-btn>
+                                    <v-row v-if="expanadFilters">
                                         <v-col cols="12" sm="6" md="4">
-                                           <vue-date-picker v-model="filterDate" range :max-date="new Date()" placeholder="Filter emails by date" :enable-time-picker="false" multi-calendars text-input @update:model-value="onDateChange"></vue-date-picker>
+                                        <div class="d-flex ga-2">
+                                            <v-btn size="small" icon="mdi-filter-outline" color="primary" @click="expanadFilters=false"></v-btn>
+                                            <vue-date-picker v-model="filterDate" range :max-date="new Date()" placeholder="Filter emails by date" :enable-time-picker="false" multi-calendars text-input @update:model-value="onDateChange"></vue-date-picker>
                                         </v-col>
                                         <v-col cols="12" sm="6" md="4">
                                             <v-text-field
@@ -375,7 +379,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                         </v-col>
                                     </v-row>
                                     
-                                    <v-row>
+                                    <v-row v-if="expanadFilters">
                                         <v-col cols="12" sm="6" md="3">
                                             <v-text-field
                                                 v-model="searchSubject"
