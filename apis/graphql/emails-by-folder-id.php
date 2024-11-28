@@ -565,18 +565,29 @@ add_action('graphql_register_types', function () {
             // Apply filters if provided
             if (!empty($args['filters'])) {
                 $filters = $args['filters'];
-    
+                
                 // Date range filter
                 if (!empty($filters['startDate'][0]) && !empty($filters['endDate'][0])) {
+                    $startOfDayUTC = gmdate('Y-m-d H:i:s', strtotime($filters['startDate'][0] . ' 00:00:00') - (5.5 * 3600));
+                    $endOfDayUTC = gmdate('Y-m-d H:i:s', strtotime($filters['endDate'][0] . ' 23:59:59') - (5.5 * 3600));
+                
                     $conditions[] = "e.received_datetime BETWEEN %s AND %s";
-                    $query_params[] = $filters['startDate'][0];
-                    $query_params[] = $filters['endDate'][0];
+                    $query_params[] = $startOfDayUTC;
+                    $query_params[] = $endOfDayUTC;
                 } elseif (!empty($filters['startDate'][0])) {
-                    $conditions[] = "e.received_datetime >= %s";
-                    $query_params[] = $filters['startDate'][0];
+                    $startOfDayUTC = gmdate('Y-m-d H:i:s', strtotime($filters['startDate'][0] . ' 00:00:00') - (5.5 * 3600));
+                    $endOfDayUTC = gmdate('Y-m-d H:i:s', strtotime($filters['startDate'][0] . ' 23:59:59') - (5.5 * 3600));
+                
+                    $conditions[] = "e.received_datetime BETWEEN %s AND %s";
+                    $query_params[] = $startOfDayUTC;
+                    $query_params[] = $endOfDayUTC;
                 } elseif (!empty($filters['endDate'][0])) {
-                    $conditions[] = "e.received_datetime <= %s";
-                    $query_params[] = $filters['endDate'][0];
+                    $startOfDayUTC = gmdate('Y-m-d H:i:s', strtotime($filters['endDate'][0] . ' 00:00:00') - (5.5 * 3600));
+                    $endOfDayUTC = gmdate('Y-m-d H:i:s', strtotime($filters['endDate'][0] . ' 23:59:59') - (5.5 * 3600));
+                
+                    $conditions[] = "e.received_datetime BETWEEN %s AND %s";
+                    $query_params[] = $startOfDayUTC;
+                    $query_params[] = $endOfDayUTC;
                 }
     
                 // Search by From filter
@@ -655,6 +666,12 @@ add_action('graphql_register_types', function () {
                             SELECT 1 FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE . " em
                             WHERE em.email_id = e.id AND em.category_id IS NOT NULL AND em.category_id > 0
                         )";
+                    } else if($categoryFilter && $categoryFilter != 'null'){
+                        $categoryIds = implode(',', array_map('intval', explode(',', $categoryFilter))); // Sanitize category IDs
+                        $conditions[] = "EXISTS (
+                            SELECT 1 FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE . " em
+                            WHERE em.email_id = e.id AND em.category_id IN ($categoryIds)
+                        )";
                     }
                 }
             }
@@ -671,6 +688,7 @@ add_action('graphql_register_types', function () {
     
             // Prepare and execute the query
             $prepared_query = $wpdb->prepare($query, $query_params);
+
             $emails = $wpdb->get_results($prepared_query);
             return $emails;
         },

@@ -101,11 +101,14 @@ function mail_inbox_activate_plugin() {
         PRIMARY KEY (id),
         INDEX idx_account_id (account_id),
         INDEX idx_folder_id (folder_id),
+        INDEX idx_email_id (email_id),
         INDEX idx_conversation_id (conversation_id),
         INDEX idx_is_read (is_read),
         INDEX idx_has_attachments (has_attachments),
         INDEX idx_created_datetime (created_datetime),
         INDEX idx_last_modified_datetime (last_modified_datetime),
+        INDEX idx_received_datetime (received_datetime),
+        INDEX idx_sent_datetime (sent_datetime),
         INDEX idx_created_at (created_at),
         INDEX idx_updated_at (updated_at)
     ) $charset_collate ENGINE=InnoDB;";

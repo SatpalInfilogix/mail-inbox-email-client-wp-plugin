@@ -112,6 +112,26 @@ add_action('graphql_register_types', function() {
                     return (int) getEmailsWithoutTagCount($folder_id, $received_date, $agent_id);
                 },
             ],
+            'authUserAssignedEmailsCount' => [
+                'type'        => 'Int',
+                'description' => 'The number of assigned emails to logged  in user',
+                'resolve'     => function($root, $args, $context, $info) {
+                    $folder_id = $root['folder_id'] ?? null;
+                    $received_date = $root['received_date'] ?? null;
+                    $agent_id = get_current_user_id();
+                    return (int) getEmailsWithTagCount($folder_id, $received_date, $agent_id);
+                },
+            ],
+            'authUserUnassignedEmailsCount' => [
+                'type'        => 'Int',
+                'description' => 'The number of unassigned emails to logged  in user',
+                'resolve'     => function($root, $args, $context, $info) {
+                    $folder_id = $root['folder_id'] ?? null;
+                    $received_date = $root['received_date'] ?? null;
+                    $agent_id = get_current_user_id();
+                    return (int) getEmailsWithoutTagCount($folder_id, $received_date, $agent_id);
+                },
+            ],
         ],
     ]);
 

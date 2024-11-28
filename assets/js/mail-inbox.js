@@ -41,7 +41,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 filterAgents: [],
                 selectedFilterAgent: null,
                 isPreviewEmailLoading: false,
-                expandedFilters: false
+                expandedFilters: false,
+                categories: [],
+                isUpdatingCategories: false,
             };
         },
         computed: {
@@ -50,6 +52,27 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             computedPreviewWidth() {
                 return this.showPreview ? this.previewWidth : 0;
+            },
+            categoriesWithStaticOptions() {
+                // Check if a specific ID is selected
+                if (this.filters.categories && this.filters.categories.length > 0) {
+                    if(this.filters.categories.some(item => item.id === 'With Categories')){
+                        return [{ id: 'With Categories', name: 'With Categories' }];
+                    }
+                    
+                    if(this.filters.categories.some(item => item.id === 'Without Categories')){
+                        return [{ id: 'Without Categories', name: 'Without Categories' }];
+                    }
+
+                    return this.categories;
+                }
+
+                // If no ID is selected, include the special categories
+                return [
+                    { id: 'With Categories', name: 'With Categories' },
+                    { id: 'Without Categories', name: 'Without Categories' },
+                    ...this.categories,
+                ];
             },
         },
         components: { VueDatePicker },
@@ -65,12 +88,32 @@ document.addEventListener("DOMContentLoaded", function () {
             updateSearchSubject(e) {
                 this.filters.searchSubject = e.target.value;
             },
-            updateSearchAgent(agent){
+            updateSearchAgent(agent) {
                 this.selectedFilterAgent = agent.props;
                 this.filters.agentId = agent.value;
             },
             updateSearchBody(e) {
                 this.filters.keyword = e.target.value;
+            },
+            async fetchCategories() {
+                const query = `
+                query {
+                    mailInboxCategories(status: "Active") {
+                        id
+                        name
+                    }
+                }`;
+
+                const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query })
+                });
+
+                const apiResponse = await response.json();
+                this.categories = apiResponse.data.mailInboxCategories;
             },
             async fetchAgents() {
                 const query = `
@@ -81,7 +124,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         email
                     }
                 }`;
-    
+
                 const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
                     method: 'POST',
                     headers: {
@@ -89,7 +132,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     },
                     body: JSON.stringify({ query })
                 });
-    
+
                 const apiResponse = await response.json();
                 this.agents = apiResponse.data.mailInboxAgents;
 
@@ -101,29 +144,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 this.filterAgents = tempAgents;
             },
-            async updateReadStatus(emailId, isRead = 1){
+            async updateReadStatus(emailId, isRead = 1) {
                 const formdata = new FormData();
                 formdata.append("action", "update_email_read_status");
                 formdata.append("email_id", emailId);
                 formdata.append("is_read", isRead);
-    
+
                 const response = await fetch(ajaxurl, {
                     method: 'POST',
                     body: formdata
                 });
-    
+
                 return await response.json();
             },
             async viewEmail(emailId) {
                 this.isPreviewEmailLoading = true;
 
                 this.showPreview = true;
-                if(parseFloat(this.previewWidth) <= 43){
+                if (parseFloat(this.previewWidth) <= 43) {
                     this.previewWidth = 43;
                 }
 
                 this.updateReadStatus(emailId);
-                
+
                 let calculatedContentWidth = this.contentWidth === this.previewWidth ? this.contentWidth : this.contentWidth - this.previewWidth;
 
                 this.updateWidths({
@@ -176,40 +219,40 @@ document.addEventListener("DOMContentLoaded", function () {
                 this.activeEmail = apiResponse.data.getEmailById;
                 this.isPreviewEmailLoading = false;
             },
-            async viewEmailIfPreviewOpened(emailId){
-                if(this.showPreview){
+            async viewEmailIfPreviewOpened(emailId) {
+                if (this.showPreview) {
                     this.viewEmail(emailId);
                 }
             },
-            handleSelectedAccount(accountDetails){
+            handleSelectedAccount(accountDetails) {
                 this.account = accountDetails;
                 localStorage.setItem('mailInboxSelectedAccount', JSON.stringify(accountDetails));
             },
-            handleActiveFolder(folder){
+            handleActiveFolder(folder) {
                 this.activeFolder = folder;
                 localStorage.setItem('mailInboxActiveFolder', JSON.stringify(folder))
             },
-            handleFolderTab(folder, action = 'add'){
-                const account = this.connectedAccounts.find(acc => 
+            handleFolderTab(folder, action = 'add') {
+                const account = this.connectedAccounts.find(acc =>
                     acc.folders.some(f => f.id === folder.id)
                 );
-            
+
                 // If no account is found, return early
                 if (!account) {
                     console.error('No account found for the given folder:', folder);
                     return;
                 }
-            
+
                 // Find the account in the tabFolders array
                 let accountIndex = this.tabFolders.findIndex(a => a.id === account.id);
-                
+
                 // If the account is not already in tabFolders, add it
                 if (accountIndex === -1) {
                     const nameParts = account.username.split(' ');
                     const shortname = nameParts.length > 1
                         ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase()
                         : nameParts[0][0].toUpperCase();
-                        
+
                     this.tabFolders.push({
                         id: account.id,
                         username: account.username,
@@ -218,10 +261,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     });
                     accountIndex = this.tabFolders.length - 1; // Update index to new account position
                 }
-                
+
                 // Find the folder index within the selected account's folders
                 const folderIndex = this.tabFolders[accountIndex].folders.findIndex(f => f.id === folder.id);
-            
+
                 if (action === 'add') {
                     folder.uniqueId = Date.now();
                     this.tabFolders[accountIndex].folders.push(folder);
@@ -234,49 +277,49 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 if (this.tabFolders[accountIndex].folders.length === 0) {
                     this.tabFolders.splice(accountIndex, 1);
-                }            
-            
+                }
+
                 localStorage.setItem('mailInboxTabFolders', JSON.stringify(this.tabFolders));
             },
-            setDefaultActiveFolder(){
-                if(localStorage.getItem('mailInboxActiveFolder')){
+            setDefaultActiveFolder() {
+                if (localStorage.getItem('mailInboxActiveFolder')) {
                     let tempFolder = JSON.parse(localStorage.getItem('mailInboxActiveFolder'));
                     this.activeFolder = tempFolder;
                 } else {
                     let tempSelectedAccount = localStorage.getItem('mailInboxSelectedAccount');
-                    if(tempSelectedAccount){
+                    if (tempSelectedAccount) {
                         tempSelectedAccount = JSON.parse(tempSelectedAccount);
-                        
-                        if(tempSelectedAccount.folders){
+
+                        if (tempSelectedAccount.folders) {
                             this.activeFolder = tempSelectedAccount.folders[0];
                             localStorage.setItem('mailInboxActiveFolder', JSON.stringify(this.activeFolder));
                         }
                     }
                 }
             },
-            onAccountLoad(accounts){
+            onAccountLoad(accounts) {
                 // Handle progress for saved accounts only
-                if(this.connectedAccounts.length === 0){
+                if (this.connectedAccounts.length === 0) {
                     this.loadingText = '';
                 }
 
                 this.connectedAccounts = accounts;
-                if(!this.activeFolder.id && accounts.length > 0){
-                    if(accounts[0].folders.length > 0){
+                if (!this.activeFolder.id && accounts.length > 0) {
+                    if (accounts[0].folders.length > 0) {
                         let tempDefaultFolder = accounts[0].folders[0];
                         this.activeFolder = tempDefaultFolder;
                         localStorage.setItem('mailInboxActiveFolder', JSON.stringify(tempDefaultFolder));
                     }
                 }
             },
-            handleSynchronization(message, isEmailSynced = 0){
+            handleSynchronization(message, isEmailSynced = 0) {
                 this.loadingText = message;
 
-                if(isEmailSynced > 0){
+                if (isEmailSynced > 0) {
                     this.updatedEmailsCount++;
                 }
             },
-            handleLoadingText(message){
+            handleLoadingText(message) {
                 this.loadingText = message;
             },
             onDateChange(newDateRange) {
@@ -285,29 +328,33 @@ document.addEventListener("DOMContentLoaded", function () {
                     return new Date(date).toISOString().split('T')[0]; // Returns 'YYYY-MM-DD'
                 };
 
-                if(newDateRange){
+                if (newDateRange) {
                     this.filters.startDate = formatDate(newDateRange[0]);
                     this.filters.endDate = formatDate(newDateRange[1]);
-                } else{
+                } else {
                     this.filters.startDate = '';
                     this.filters.endDate = '';
                 }
 
                 this.filterDate = newDateRange;
             },
-            clearSelection() {
+            clearAgentSelection() {
                 this.selectedFilterAgent = null;
                 this.filters.agentId = 0;
             },
+            clearCategoriesSelection() {
+                this.filters.categories = null;
+            },
         },
-        mounted(){
+        mounted() {
             this.setDefaultActiveFolder();
 
-            if(localStorage.getItem('mailInboxTabFolders')){
+            if (localStorage.getItem('mailInboxTabFolders')) {
                 this.tabFolders = JSON.parse(localStorage.getItem('mailInboxTabFolders'));
             }
-            
+
             this.fetchAgents();
+            this.fetchCategories();
         },
         template: `
             <v-app class="mail-inbox-container">
@@ -409,8 +456,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                                 <!-- Display Selected Tag as a Chip -->
                                                 <template v-slot:selection="{ item }">
                                                     {{ item.raw.title.name }}
-
-                                                    <v-icon @click.stop="clearSelection" class="position-absolute right-0">mdi-close</v-icon>
+                                                    <v-icon @click.stop="clearAgentSelection" class="position-absolute right-0">mdi-close</v-icon>
                                                 </template>
                                     
                                                 <!-- Display Each Dropdown Item with a Chip -->
@@ -427,21 +473,42 @@ document.addEventListener("DOMContentLoaded", function () {
                                                 </template>
                                             </v-select>
                                         </v-col>
+
                                         <v-col cols="12" sm="3" md="3">
                                             <v-select
                                             label="Filter By Tags"
                                             v-model="filters.tags" 
                                             density="compact"
                                             :items="['With Tags', 'Without Tags']"
+                                            clearable
                                             ></v-select>
                                         </v-col>
+
                                         <v-col cols="12" sm="3" md="3">
                                             <v-select
-                                            label="Filter By Categories"
-                                            v-model="filters.categories" 
-                                            density="compact"
-                                            :items="['With Categories', 'Without Categories']"
-                                            ></v-select>
+                                                label="Filter By Categories"
+                                                v-model="filters.categories"
+                                                density="compact"
+                                                :items="categoriesWithStaticOptions"
+                                                item-title="name"
+                                                item-value="id"
+                                                return-object
+                                                multiple
+                                                >
+                                                <template v-slot:item="{ props, item: categoryItem }">
+                                                    <v-list-item v-bind="props"></v-list-item>
+                                                </template>
+                                                <template v-slot:selection="{ item, index }">
+                                                    <v-chip v-if="index < 2">
+                                                    <span>{{ item.title }}</span>
+                                                    </v-chip>
+                                                    <span v-if="index === 2" class="text-grey text-caption align-self-center">
+                                                    (+{{ filters.categories.length - 2 }} others)
+                                                    </span>
+
+                                                    <v-icon @click.stop="clearCategoriesSelection" class="position-absolute right-0">mdi-close</v-icon>
+                                                </template>
+                                            </v-select>
                                         </v-col>
                                     </v-row>
                                     
@@ -467,6 +534,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     :updatedEmailsCount="updatedEmailsCount"
                                     :filters="filters"
                                     :agents="agents"
+                                    :categories="categories"
                                     :isPreviewOpened="showPreview"
                                     :isExpandedFilters="expandedFilters"
                                     @view-email="viewEmail"

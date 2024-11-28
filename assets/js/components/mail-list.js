@@ -17,6 +17,10 @@ export default {
             type: Object,
             default: {}
         },
+        categories: {
+            type: Array,
+            required: true
+        },
         isPreviewOpened: {
             type: Boolean,
             default: false
@@ -49,7 +53,6 @@ export default {
             isAssignAgentDialogOpen: false,
             showUnAssignTagModal: false,
             showUnAssignAgentModal: false,
-            categories: [],
             tagId: 0,
             snackbar: false,
             snackbarMessage: '',
@@ -146,6 +149,8 @@ export default {
                     emailCounts(folder_id: $folderId, received_date: $receivedDate, agent_id: $agentId) {
                         assignedEmailsCount
                         unassignedEmailsCount
+                        authUserAssignedEmailsCount
+                        authUserUnassignedEmailsCount
                     }
                 }
             `;
@@ -209,6 +214,12 @@ export default {
             this.loadingMoreEmails = true;
 
             const agentIdValue = this.filters.agentId ? parseInt(this.filters.agentId) : null;
+            let filterCategories = this.filters.categories;
+            if (!filterCategories) {
+                filterCategories = ''
+            } else {
+                filterCategories = filterCategories.map(category => category.id).join(',');
+            }
 
             const query = `
                 query {
@@ -223,7 +234,7 @@ export default {
                             searchSubject: "${this.filters.searchSubject || ''}",
                             agentId: ${agentIdValue !== null ? agentIdValue : 'null'},
                             tags: "${this.filters.tags || 'null'}",
-                            categories: "${this.filters.categories || 'null'}",
+                            categories: "${filterCategories || 'null'}",
                         }) {
                         id
                         subject
@@ -344,6 +355,7 @@ export default {
 
                     if (offset === 0) {
                         this.loadedMails = newEmails;
+                        await this.fetchEmailCounts();
                     } else {
                         this.loadedMails = [...this.loadedMails, ...newEmails];
                     }
@@ -354,8 +366,6 @@ export default {
                     if (newEmails.length < 20) {
                         this.allLoaded = true;
                     }
-
-                    await this.fetchEmailCounts();
                 } else {
                     this.allLoaded = true;
                 }
@@ -389,26 +399,6 @@ export default {
 
             const apiResponse = await response.json();
             this.tags = apiResponse.data.mailInboxTags;
-        },
-        async fetchCategories() {
-            const query = `
-            query {
-                mailInboxCategories(status: "Active") {
-                    id
-                    name
-                }
-            }`;
-
-            const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ query })
-            });
-
-            const apiResponse = await response.json();
-            this.categories = apiResponse.data.mailInboxCategories;
         },
         async associateEmailAdditionalInformation(emailId, column, value) {
             const formdata = new FormData();
@@ -703,7 +693,7 @@ export default {
             this.selectedCountsFilterAgent = item;
             this.fetchEmailCounts();
         },
-        clearSelection() {
+        clearCountsAgentSelection() {
             this.selectedCountsFilterAgent = null;
             this.fetchEmailCounts();
         },
@@ -731,7 +721,6 @@ export default {
     },
     async mounted() {
         await this.fetchTags();
-        await this.fetchCategories();
         await this.fetchUsers('');
         this.$nextTick(() => {
             const dataTable = this.$refs.mailDataTable;
@@ -755,7 +744,7 @@ export default {
         }
     },
     template: `
-       <v-container fluid :style="{ height: isExpandedFilters ? 'calc(100vh - 220px)' : 'calc(100vh - 160px)' }" class="position-relative pt-0">
+       <v-container fluid :style="{ height: isExpandedFilters ? 'calc(100vh - 220px)' : 'calc(100vh - 186px)' }" class="position-relative pt-0">
         <!-- Data Table -->
         <v-progress-linear
             color="primary"
@@ -788,7 +777,7 @@ export default {
                     <!-- Display Selected Tag as a Chip -->
                     <template v-slot:selection="{ item }">
                         {{ item.props.title.name }}
-                        <v-icon @click.stop="clearSelection" class="position-absolute right-0">mdi-close</v-icon>
+                        <v-icon @click.stop="clearCountsAgentSelection" class="position-absolute right-0">mdi-close</v-icon>
                     </template>
                                         
                     <!-- Display Each Dropdown Item with a Chip -->
@@ -803,6 +792,10 @@ export default {
                     </template>
                 </v-select>
             </div>
+        </div>
+
+        <div class="w-100" v-if="!loadingEmailCounts">
+            <p class="ma-0 text-body-1 text-red">You have {{emailCounts.authUserUnassignedEmailsCount}} unresolved emails</p>
         </div>
 
         <v-data-table
