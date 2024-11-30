@@ -143,11 +143,11 @@ function fetchFoldersRecursively($url, $accessToken, &$folders)
 function countEmailsByFolderId($accessToken, $folderId, $lastSavedEmailTime = '')
 {
     // Prepare the API endpoint for counting messages in the specified folder
-    $countUrl = GRAPH_API_BASE_ENDPOINT . 'mailFolders/' . $folderId . '/messages?$count=true&$top=1';
+    $countUrl = GRAPH_API_BASE_ENDPOINT . 'mailFolders/' . $folderId . '/messages?$count=true&$select=id&$top=1';
 
     // Append filter condition if $lastSavedEmailTime is provided
     if (!empty($lastSavedEmailTime)) {
-        $filterQuery = '&$filter=receivedDateTime ge ' . $lastSavedEmailTime;
+        $filterQuery = '&$filter=lastModifiedDateTime ge ' . $lastSavedEmailTime;
         $countUrl .= $filterQuery;
     }
 
@@ -187,14 +187,14 @@ function getNewEmailsCount($accountId, $folderId = '')
     // Get new emails count for specific folder
     if ($folderId) {
         $lastSavedEmail = $wpdb->get_row($wpdb->prepare(
-            "SELECT received_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE account_id = %d AND parent_folder_id = %s ORDER BY received_datetime DESC LIMIT 1",
+            "SELECT last_modified_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE account_id = %d AND parent_folder_id = %s ORDER BY last_modified_datetime DESC LIMIT 1",
             $accountId,
             $folderId
         ));
 
         $iso8601Date = '';
         if ($lastSavedEmail) {
-            $iso8601Date = localToISOTimestamp($lastSavedEmail->received_datetime);
+            $iso8601Date = localToISOTimestamp($lastSavedEmail->last_modified_datetime);
         }
 
         // Sync new emails for the folder
@@ -238,14 +238,14 @@ function getNewEmailsCount($accountId, $folderId = '')
 
             // Get saved email count for the folder
             $lastSavedEmail = $wpdb->get_row($wpdb->prepare(
-                "SELECT received_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE account_id = %d AND parent_folder_id = %s ORDER BY received_datetime DESC LIMIT 1",
+                "SELECT last_modified_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE account_id = %d AND parent_folder_id = %s ORDER BY last_modified_datetime DESC LIMIT 1",
                 $accountId,
                 $folderId
             ));
 
             $iso8601Date = '';
             if ($lastSavedEmail) {
-                $iso8601Date = localToISOTimestamp($lastSavedEmail->received_datetime);
+                $iso8601Date = localToISOTimestamp($lastSavedEmail->last_modified_datetime);
             }
 
             // Sync new emails for the folder
@@ -283,26 +283,26 @@ function getNewEmails($accountId, $folder_id = '')
     global $wpdb;
 
     // Set the base email endpoint
-    $emailEndpoint = 'messages?$top=10&$orderby=receivedDateTime%20asc';
+    $emailEndpoint = 'messages?$top=10&$orderby=lastModifiedDateTime%20asc';
 
     // If a folder ID is provided, adjust the endpoint to fetch emails from that specific folder
     if (!empty($folder_id)) {
         $query = $wpdb->prepare(
-            "SELECT received_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE parent_folder_id = %s ORDER BY ID DESC",
+            "SELECT last_modified_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE parent_folder_id = %s ORDER BY ID DESC",
             $folder_id
         );
 
         $lastSavedEmail = $wpdb->get_row($query);
 
-        $emailEndpoint = 'mailFolders/' . $folder_id . '/messages?$top=10&$orderby=receivedDateTime%20asc';
+        $emailEndpoint = 'mailFolders/' . $folder_id . '/messages?$top=10&$orderby=lastModifiedDateTime%20asc';
     }
 
     // If there are saved emails, use the $skip parameter to fetch new emails
-    if (!empty($lastSavedEmail->received_datetime)) {
-        $lastEmailTime = $lastSavedEmail->received_datetime;
+    if (!empty($lastSavedEmail->last_modified_datetime)) {
+        $lastEmailTime = $lastSavedEmail->last_modified_datetime;
         $dateTime = new DateTime($lastEmailTime);
         $iso8601Date = $dateTime->format('Y-m-d\TH:i:s\Z');
-        $emailEndpoint .= '&$filter=receivedDateTime ge ' . $iso8601Date;
+        $emailEndpoint .= '&$filter=lastModifiedDateTime ge ' . $iso8601Date;
     }
 
     $response = wp_remote_get(GRAPH_API_BASE_ENDPOINT . $emailEndpoint, [
@@ -323,10 +323,10 @@ function getNewEmails($accountId, $folder_id = '')
     $emails_with_attachments = [];
 
     foreach ($emails['value'] as $email) {
-        $emailId = $email['id'];
-        $conversationId = $email['conversationId'];
+        $internetMessageId = $email['internetMessageId'];
+        $receivedDateTime = $email['receivedDateTime'];
 
-        if (!is_email_synced($emailId, $conversationId)) {
+        if (!is_email_synced($internetMessageId, $receivedDateTime)) {
             if ($email['hasAttachments']) {
                 $attachments_response = wp_remote_get(GRAPH_API_BASE_ENDPOINT . "messages/{$email['id']}/attachments", [
                     'headers' => [
@@ -383,6 +383,8 @@ function getNewEmails($accountId, $folder_id = '')
             }
 
             $emails_with_attachments[] = $email;
+        } else {
+            updateSavedEmail($email);
         }
     }
 

@@ -85,9 +85,9 @@ function syncEmails() {
     if (isset($newEmails['error']['code'])) {
         handle_auth_error($newEmails['error']['code']);
     }
-    
+
     array_walk($newEmails, function ($email) use ($account_id) {
-        updateOrCreateEmail($account_id, $email);
+        saveNewEmail($account_id, $email);
     });
 
     wp_send_json_success([

@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Mail Inbox Email Client
-Version: 1.0.2
+Version: 1.0.3
 Author: Satpal Singh Sekhon
 License: GPL2
 */

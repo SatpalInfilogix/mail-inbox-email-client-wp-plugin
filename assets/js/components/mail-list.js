@@ -40,6 +40,10 @@ export default {
         isExpandedFilters: {
             type: Boolean,
             default: false
+        },
+        activeSyncingFolder: {
+            type: Object,
+            default: null
         }
     },
     data() {
@@ -707,7 +711,9 @@ export default {
         },
         updatedEmailsCount: {
             handler() {
-                this.loadEmails();
+                if(this.activeSyncingFolder.local_folder_id === this.activeFolder.id){
+                    this.loadEmails();
+                }
             },
             deep: true
         },
@@ -880,7 +886,7 @@ export default {
 
                     <td>
                         <div class="text-truncate" style="width: 140px;">
-                            <span v-if="activeFolder.display_name==='Inbox'">
+                            <span v-if="activeFolder.display_name==='Inbox' || activeFolder.display_name==='Junk Email'">
                                 {{ JSON.parse(item.sender)?.emailAddress?.name || 'Unknown' }}<br>
                                 {{ JSON.parse(item.sender)?.emailAddress?.address || 'Unknown' }}<br>
 

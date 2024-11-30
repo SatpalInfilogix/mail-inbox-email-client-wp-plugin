@@ -44,6 +44,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 expandedFilters: false,
                 categories: [],
                 isUpdatingCategories: false,
+                activeSyncingFolder: null
             };
         },
         computed: {
@@ -345,6 +346,9 @@ document.addEventListener("DOMContentLoaded", function () {
             clearCategoriesSelection() {
                 this.filters.categories = null;
             },
+            syncingFolder(folder){
+                this.activeSyncingFolder = folder;
+            }
         },
         mounted() {
             this.setDefaultActiveFolder();
@@ -370,6 +374,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     @active-folder="handleActiveFolder"
                                     @folder-tab="handleFolderTab"
                                     @synchronization="handleSynchronization"
+                                    @syncing-folder="syncingFolder"
                                 >
                                 </mail-sidebar>
                             </v-col>
@@ -537,6 +542,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     :categories="categories"
                                     :isPreviewOpened="showPreview"
                                     :isExpandedFilters="expandedFilters"
+                                    :activeSyncingFolder="activeSyncingFolder"
                                     @view-email="viewEmail"
                                     @updateReadStatus="updateReadStatus"
                                     @view-email-if-preview-opened="viewEmailIfPreviewOpened"

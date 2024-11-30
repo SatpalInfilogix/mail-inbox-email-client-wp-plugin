@@ -88,3 +88,7 @@
 .no-detail-spacing .v-input__details{
     display: none;
 }
+
+.v-list-item__prepend{
+    display: block!important;
+}

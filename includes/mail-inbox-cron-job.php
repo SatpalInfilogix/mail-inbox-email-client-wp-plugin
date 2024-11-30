@@ -69,7 +69,7 @@ function fetchEmailsRecursively($accountId) {
 
             // Process and store the fetched emails
             array_walk($newFetchedEmails, function ($email) use ($accountId) {
-                updateOrCreateEmail($accountId, $email);
+                saveNewEmail($accountId, $email);
             });
 
             mail_inbox_log(json_encode([

@@ -10,7 +10,7 @@ export default {
         ErrorsModel,
         MailFolders
     },
-    emits: ['loadedAccounts', 'selectAccount', 'activeFolder', 'folderTab', 'synchronization'],
+    emits: ['loadedAccounts', 'selectAccount', 'activeFolder', 'folderTab', 'synchronization', 'syncingFolder'],
     props: {
         activeFolder: {
             type: Object,
@@ -217,7 +217,7 @@ export default {
             formdata.append("account_id", this.selectedAccount.id);
             formdata.append("folder_id", this.syncFolder ? this.syncFolder.folder_id : '');
         
-            if (this.syncFolder) {
+            if (this.syncFolder && this.syncFolder.count) {
                 this.$emit('synchronization', `${this.syncFolder.count} emails to be synced in ${this.syncFolder.folder_name}`, 1);
             }
         
@@ -349,6 +349,14 @@ export default {
             this.isSyncing = true;
             await this.syncEmails();
         }
+    },
+    watch: {
+        syncFolder: {
+            handler() {
+                this.$emit('syncingFolder', this.syncFolder);
+            },
+            deep: true
+        },
     },
     async mounted() {
         await this.fetchConnectedAccounts();

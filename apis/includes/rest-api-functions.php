@@ -60,28 +60,73 @@ function updateOrCreateEmailFolder($account_id, $folder)
     }
 }
 
-function is_email_synced($emailId, $conversationId) {
+function is_email_synced($internetMessageId, $receivedDateTime) {
     global $wpdb;
 
     $table_name = MAIL_INBOX_EMAILS_TABLE;
     $exists = $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM $table_name WHERE email_id = %s AND conversation_id = %s",
-        $emailId,
-        $conversationId
+        "SELECT COUNT(*) FROM $table_name WHERE internet_message_id = %s AND received_datetime = %s",
+        $internetMessageId,
+        $receivedDateTime
     ));
 
     return $exists > 0;
 }
 
+function updateSavedEmail($email){
+    global $wpdb;
+    
+    $parentFolderId = $email['parentFolderId'];
+    $savedFolder = $wpdb->get_row(
+        $wpdb->prepare("SELECT id FROM " . MAIL_INBOX_FOLDERS_TABLE . " WHERE folder_id = %s", $parentFolderId)
+    );
 
-function updateOrCreateEmail($account_id, $email)
+    $data = array(
+        'folder_id' => $savedFolder ? $savedFolder->id : null,
+        'categories' => json_encode($email['categories']),
+        'has_attachments' => isset($email['hasAttachments']) ? $email['hasAttachments'] : '',
+        'subject' => $email['subject'],
+        'importance' => $email['importance'],
+        'parent_folder_id' => $email['parentFolderId'],
+        'conversation_id' => $email['conversationId'],
+        'is_delivery_receipt_requested' => isset($email['isDeliveryReceiptRequested']) ? $email['isDeliveryReceiptRequested'] : '',
+        'is_read_receipt_requested' => isset($email['isReadReceiptRequested']) ? $email['isReadReceiptRequested'] : '',
+        'is_read' => isset($email['isRead']) ? $email['isRead'] : '',
+        'is_draft' => isset($email['isDraft']) ? $email['isDraft'] : '',
+        'body_content_type' => $email['body']['contentType'],
+        'sender' => json_encode($email['sender']),
+        'from' => json_encode($email['from']),
+        'to_recipients' => json_encode($email['toRecipients']),
+        'cc_recipients' => json_encode($email['ccRecipients']),
+        'bcc_recipients' => json_encode($email['bccRecipients']),
+        'reply_to' => json_encode($email['replyTo']),
+        'flag_status' => $email['flag']['flagStatus'],
+        'created_datetime' => $email['createdDateTime'],
+        'last_modified_datetime' => $email['lastModifiedDateTime'],
+        'sent_datetime' => $email['sentDateTime'],
+    );
+    
+    $where = array(
+        'internet_message_id' => $email['internetMessageId'],
+        //'received_datetime' => $email['receivedDateTime'],
+    );
+    
+    $wpdb->update(
+        MAIL_INBOX_EMAILS_TABLE,
+        $data,
+        $where
+    );
+}
+
+function saveNewEmail($account_id, $email)
 {
     global $wpdb;
 
     $emailId = $email['id'];
-    $conversationId = $email['conversationId'];
+    $internetMessageId = $email['internetMessageId'];
+    $receivedDateTime = $email['receivedDateTime'];
 
-    if (!is_email_synced($emailId, $conversationId)) {
+    if (!is_email_synced($internetMessageId, $receivedDateTime)) {
         try {
             $email_id = $email['id'];
             $parent_folder_id = $email['parentFolderId'];
@@ -107,6 +152,7 @@ function updateOrCreateEmail($account_id, $email)
                 'is_read' => isset($email['isRead']) ? $email['isRead'] : '',
                 'is_draft' => isset($email['isDraft']) ? $email['isDraft'] : '',
                 'web_link' => $email['webLink'],
+                'internet_message_id' => $email['internetMessageId'],
                 'body_content_type' => $email['body']['contentType'],
                 'body_content' => $email['body']['content'],
                 'sender' => json_encode($email['sender']),
@@ -161,7 +207,6 @@ function updateOrCreateEmail($account_id, $email)
             wp_send_json_error($e->getMessage(), 500);
         }
     } else {
-        //print_r($email);
         mail_inbox_error_log("Email {$emailId} is already being synced!");
     }
 }
