@@ -7,9 +7,7 @@ if (!defined('ABSPATH')) {
 /**
  * Handles plugin activation tasks.
  */
-function mail_inbox_activate_plugin() {
-    //schedule_mail_inbox_cron_event();
-    
+function mail_inbox_activate_plugin() {    
     global $wpdb;
 
     $role = get_role('administrator'); // Temporarily get an admin role to initialize the cap

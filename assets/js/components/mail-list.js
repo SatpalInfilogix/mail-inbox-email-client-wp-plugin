@@ -211,7 +211,7 @@ export default {
                 this.loading = false;
                 this.allLoaded = false;
             }
-
+            
             if (this.loading || this.allLoaded || !this.activeFolder) return;
 
             this.loading = true;
@@ -297,6 +297,8 @@ export default {
                 }
 
                 if (apiResponse.data.getEmailsByFolderId) {
+                    this.loading = false;
+                    
                     const newEmails = apiResponse.data.getEmailsByFolderId.map(email => {
                         // Ensure additionalInfo exists with necessary structure
                         email.additionalInfo = email.additionalInfo || {};
@@ -640,10 +642,16 @@ export default {
         },
         handleScroll(event) {
             const { scrollTop, scrollHeight, clientHeight } = event.target;
-
-            if (scrollTop + clientHeight >= scrollHeight - 350) {
+        
+            // Calculate the total scrollable height
+            const totalScrollableHeight = scrollHeight - clientHeight;
+        
+            // Calculate the scroll position as a percentage
+            const scrollPercentage = scrollTop / totalScrollableHeight;
+        
+            // Load more emails when the user has scrolled past 50% of the content
+            if (scrollPercentage >= 0.5) {
                 const newOffset = this.loadedMails.length;
-
                 this.loadEmails(newOffset);
             }
         },

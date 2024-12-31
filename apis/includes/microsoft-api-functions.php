@@ -276,10 +276,9 @@ function getNewEmailsCount($accountId, $folderId = '')
     ];
 }
 
-function getNewEmails($accountId, $folder_id = '')
+function getNewEmails($accountId, $folder_id = '', $param = '')
 {
     $accessToken = getMicrosoftAccessToken($accountId);
-
     global $wpdb;
 
     // Set the base email endpoint
@@ -288,7 +287,7 @@ function getNewEmails($accountId, $folder_id = '')
     // If a folder ID is provided, adjust the endpoint to fetch emails from that specific folder
     if (!empty($folder_id)) {
         $query = $wpdb->prepare(
-            "SELECT last_modified_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE parent_folder_id = %s ORDER BY ID DESC",
+            "SELECT last_modified_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE parent_folder_id = %s ORDER BY last_modified_datetime DESC LIMIT 1",
             $folder_id
         );
 
@@ -298,13 +297,30 @@ function getNewEmails($accountId, $folder_id = '')
     }
 
     // If there are saved emails, use the $skip parameter to fetch new emails
-    if (!empty($lastSavedEmail->last_modified_datetime)) {
+    if (!empty($lastSavedEmail->last_modified_datetime) && !$param) {
         $lastEmailTime = $lastSavedEmail->last_modified_datetime;
         $dateTime = new DateTime($lastEmailTime);
         $iso8601Date = $dateTime->format('Y-m-d\TH:i:s\Z');
         $emailEndpoint .= '&$filter=lastModifiedDateTime ge ' . $iso8601Date;
+    } else if($param=='confliction'){
+        $query = $wpdb->prepare(
+            "SELECT last_modified_datetime, received_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE parent_folder_id = %s ORDER BY last_modified_datetime DESC LIMIT 1",
+            $folder_id
+        );
+        
+        $lastSavedEmail = $wpdb->get_row($query);
+        
+        $lastEmailModifiedTime = $lastSavedEmail->last_modified_datetime;
+        $dateTime = new DateTime($lastEmailModifiedTime);
+        $lastModifiedTime = $dateTime->format('Y-m-d\TH:i:s\Z');
+        
+        $lastEmailReceivedTime = $lastSavedEmail->last_modified_datetime;
+        $dateTime = new DateTime($lastEmailReceivedTime);
+        $lastReceivedTime = $dateTime->format('Y-m-d\TH:i:s\Z');
+        
+        $emailEndpoint .= '&$filter=lastModifiedDateTime ge ' . $lastModifiedTime.' and receivedDateTime ge '.$lastReceivedTime;
     }
-
+    
     $response = wp_remote_get(GRAPH_API_BASE_ENDPOINT . $emailEndpoint, [
         'headers' => [
             'Authorization' => 'Bearer ' . $accessToken,

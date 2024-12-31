@@ -21,19 +21,12 @@ require_once MAIL_INBOX_PLUGIN_DIR . 'includes/functions.php';
 require_once MAIL_INBOX_PLUGIN_DIR . 'includes/admin-menus.php';
 require_once MAIL_INBOX_PLUGIN_DIR . 'includes/assets.php';
 require_once MAIL_INBOX_PLUGIN_DIR . 'includes/email-oauth-callback.php';
-require_once MAIL_INBOX_PLUGIN_DIR . 'includes/mail-inbox-cron-job.php';
 
 require_once MAIL_INBOX_PLUGIN_DIR . 'apis/rest-api-endpoints.php';
 require_once MAIL_INBOX_PLUGIN_DIR . 'apis/graphql-api-endpoints.php';
 
 require_once MAIL_INBOX_PLUGIN_DIR . 'includes/activation.php';
 register_activation_hook(__FILE__, 'mail_inbox_activate_plugin');
-
-
-function deactivate_mail_inbox_email_client() {
-    remove_mail_inbox_cron_job();
-}
-register_deactivation_hook(__FILE__, 'deactivate_mail_inbox_email_client');
 
 function add_email_capabilities() {
     // Define the new email capabilities

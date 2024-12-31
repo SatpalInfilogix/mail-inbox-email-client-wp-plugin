@@ -218,6 +218,7 @@ export default {
             formdata.append("folder_id", this.syncFolder ? this.syncFolder.folder_id : '');
         
             if (this.syncFolder && this.syncFolder.count) {
+                formdata.append("emails_to_be_synced", this.syncFolder.count);
                 this.$emit('synchronization', `${this.syncFolder.count} emails to be synced in ${this.syncFolder.folder_name}`, 1);
             }
         
@@ -243,11 +244,6 @@ export default {
         
                     const folderIndex = this.foldersToBeSynced.findIndex(folder => folder.local_folder_id === this.syncFolder.local_folder_id);
                     if (folderIndex !== -1) {
-                        // Update only when synced count is greater than zero
-                        /* if (syncedCount > 0) {
-                            this.foldersToBeSynced[folderIndex].count = Math.max(0, this.foldersToBeSynced[folderIndex].count - syncedCount);
-                        } */
-        
                         if (syncedCount > 0) {
                             // If emails are still remaining in the current folder, avoid unnecessary recursion
                             await this.syncEmails();
@@ -282,13 +278,17 @@ export default {
             } catch (error) {
                 if (retryCount > 0) {
                     console.warn(`Retrying sync... attempts left: ${retryCount}`);
-                    setTimeout(() => this.syncEmails(retryCount - 1), 2000); // Retry after a short delay
+                    // Wait for 2 seconds before retrying
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    // Retry the API call
+                    return await this.syncEmails(retryCount - 1);
                 } else {
                     this.$emit('synchronization', ``);
-                    alert(`Error syncing emails: ${error.message}`);
+                    // Optionally alert the user about the error
+                    // alert(`Error syncing emails: ${error.message}`);
                 }
             }
-        },        
+        },
         showSnackbar(message, color = 'success') {
             this.snackbarMessage = message;
             this.snackbarColor = color;

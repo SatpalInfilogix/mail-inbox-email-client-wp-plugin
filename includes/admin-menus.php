@@ -59,15 +59,6 @@ function mail_inbox_add_admin_menu() {
         'kpi-rules',                // Menu slug
         'kpi_rules'                  // Function to display the page content
     );
-
-    /* add_submenu_page(
-        'mail-inbox',               // Parent slug
-        'Test Cron Job',            // Page title
-        'Test Cron Job',            // Menu title
-        'manage_options',           // Capability
-        'mail-inbox-cron-job',      // Menu slug
-        'mail_inbox_cron_job_function' // Function to display the page content
-    ); */
 }
 
 // Function to display the plugin page content
