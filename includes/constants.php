@@ -12,6 +12,7 @@ define('MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE', MAIL_INBOX_TABLE_PREFIX. 'emai
 define('MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE', MAIL_INBOX_TABLE_PREFIX. 'emails_additional_multiple_info');
 define('MAIL_INBOX_KPI_RULES_TABLE', MAIL_INBOX_TABLE_PREFIX. 'kpi_rules');
 define('MAIL_INBOX_EMAILS_READ_STATUS_TABLE', MAIL_INBOX_TABLE_PREFIX. 'emails_read_status');
+define('MAIL_INBOX_LOGS_TABLE', MAIL_INBOX_TABLE_PREFIX. 'logs');
 
 define('MAIL_INBOX_SCOPES', 'openid profile offline_access Mail.Read User.Read');
 define('GRAPH_API_BASE_ENDPOINT', 'https://graph.microsoft.com/v1.0/me/');

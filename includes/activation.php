@@ -228,6 +228,28 @@ function mail_inbox_activate_plugin() {
         INDEX idx_updated_at (updated_at)
     ) $charset_collate;";
 
+    
+    // SQL statement to create logs
+    $sql_email_logs = "CREATE TABLE " . MAIL_INBOX_LOGS_TABLE . " (
+        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        email_id BIGINT(20) UNSIGNED DEFAULT NULL,
+        user_id BIGINT(20) UNSIGNED DEFAULT NULL,
+        reference VARCHAR(50) DEFAULT NULL,
+        status VARCHAR(50) DEFAULT NULL,
+        reference_id BIGINT(20) DEFAULT NULL,
+        message VARCHAR(250) DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
+        PRIMARY KEY (id),
+        INDEX idx_email_id (email_id),
+        INDEX idx_user_id (user_id),
+        INDEX idx_reference_id (reference_id),
+        INDEX idx_reference (reference),
+        INDEX idx_status (status),
+        INDEX idx_created_at (created_at),
+        INDEX idx_updated_at (updated_at)
+    ) $charset_collate;";
+
     // Include the required file for dbDelta
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
@@ -242,6 +264,7 @@ function mail_inbox_activate_plugin() {
     dbDelta($sql_emails_additional_multiple_info);
     dbDelta($sql_email_kpi_rules);
     dbDelta($sql_email_read_status);
+    dbDelta($sql_email_logs);
 
     // Function to check and add foreign key constraint
     function add_foreign_key($table_name, $constraint_name, $foreign_key, $reference_table, $reference_key) {
@@ -266,4 +289,5 @@ function mail_inbox_activate_plugin() {
     add_foreign_key(MAIL_INBOX_EMAILS_ATTACHMENTS_TABLE, 'fk_email_id_attachment', 'email_id', MAIL_INBOX_EMAILS_TABLE, 'id');
     add_foreign_key(MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE, 'fk_email_id_additional_info', 'email_id', MAIL_INBOX_EMAILS_TABLE, 'id');
     add_foreign_key(MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE, 'fk_email_id_additional_multiple_info', 'email_id', MAIL_INBOX_EMAILS_TABLE, 'id');
+    add_foreign_key(MAIL_INBOX_LOGS_TABLE, 'fk_logs_email_id', 'email_id', MAIL_INBOX_EMAILS_TABLE, 'id');
 }

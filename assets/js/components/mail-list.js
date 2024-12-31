@@ -422,12 +422,17 @@ export default {
         },
         async handleEmailTag(emailId, tagId) {
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'tag_id', tagId);
+           
             if (apiResponse.success) {
                 if (tagId) {
                     this.showSnackbar(`Tag successfully assigned!`, 'success');
                 } else {
                     this.showSnackbar(`Tag unassigned successfully!`, 'success');
                 }
+
+                if(apiResponse.data.log){
+                    this.$emit('createLog', emailId, apiResponse.data.log)
+                }    
 
                 // Update the local email data to reflect the new tag
                 const email = this.loadedMails.find(mail => mail.id === emailId);
@@ -455,6 +460,10 @@ export default {
                 } else {
                     this.showSnackbar(`Agent unassigned successfully!`, 'success');
                 }
+
+                if(apiResponse.data.log){
+                    this.$emit('createLog', emailId, apiResponse.data.log)
+                } 
 
                 // Update the local email data to reflect the new tag
                 const email = this.loadedMails.find(mail => mail.id === emailId);
@@ -544,6 +553,11 @@ export default {
         async handleEmailCategories(emailId, categoryId) {
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'category_id', categoryId);
             if (apiResponse.success) {
+
+                if(apiResponse.data.log){
+                    this.$emit('createLog', emailId, apiResponse.data.log)
+                } 
+                
                 this.showSnackbar(`Category successfully assigned!`, 'success');
             } else {
                 this.showSnackbar(`Failed to assign category`, 'error');

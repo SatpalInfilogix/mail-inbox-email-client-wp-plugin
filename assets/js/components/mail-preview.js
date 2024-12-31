@@ -16,6 +16,14 @@ export default {
             menuX: 0,
             menuY: 0,
             menuAttachment: null,
+            showAllLogs: false,
+            logsToShow: 2,
+        }
+    },
+    computed: {
+        visibleLogs() {
+            // Show all logs if showAllLogs is true, otherwise show a subset
+            return this.showAllLogs ? this.email.logs : this.email.logs.slice(0, this.logsToShow);
         }
     },
     methods: {
@@ -41,6 +49,9 @@ export default {
                 });
             }
             this.hideContextMenu();
+        },
+        toggleLogs() {
+            this.showAllLogs = !this.showAllLogs;
         },
         showContextMenu(event, attachment) {
             event.preventDefault();
@@ -91,7 +102,7 @@ export default {
     watch: {
         email: {
             handler() {
-                if(this.email){
+                if (this.email) {
                     this.updateIframeContent();
                 }
             },
@@ -99,7 +110,7 @@ export default {
         },
     },
     mounted() {
-        if(this.email){
+        if (this.email) {
             this.updateIframeContent();
         }
     },
@@ -220,6 +231,17 @@ export default {
 
                 <!-- Email Body -->
                 <iframe ref="emailIframe" class="email-body-iframe" style="width: 100%; height: 45vh; border: none;"></iframe>
+
+                <div v-if="email && email.logs.length > 0">
+                    <h5 class="mb-0 font-weight-bold">Logs</h5>
+                    <ul style="list-style: unset" class="pl-4">
+                        <li class="mb-0" v-for="log in visibleLogs">{{log.message}}</li>
+                    </ul>
+
+                    <button @click="toggleLogs" class="text-decoration-underline text-primary" v-if="email.logs.length > logsToShow">
+                        {{ showAllLogs ? 'View Less' : 'View More' }}
+                    </button>
+                </div>
             </v-card-text>
 
             <!-- Actions -->

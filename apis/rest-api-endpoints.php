@@ -87,36 +87,34 @@ function syncEmails()
 
     $newEmails = getNewEmails($account_id, $folder_id);
 
-    
-    if(count($newEmails) === 0){
-         global $wpdb;
-         $query = $wpdb->prepare(
+
+    if (count($newEmails) === 0) {
+        global $wpdb;
+        $query = $wpdb->prepare(
             "SELECT last_modified_datetime FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE parent_folder_id = %s ORDER BY last_modified_datetime DESC",
             $folder_id
         );
-        
+
         $lastSavedEmail = $wpdb->get_row($query);
-        
+
         if (!empty($lastSavedEmail->last_modified_datetime)) {
             $lastEmailTime = $lastSavedEmail->last_modified_datetime;
-            
+
             $query = $wpdb->prepare(
                 "SELECT count(*) FROM " . MAIL_INBOX_EMAILS_TABLE . " WHERE parent_folder_id = %s AND last_modified_datetime = %s",
                 $folder_id,
                 $lastEmailTime
             );
-            
+
             $savedEmailsCountWithSameModifiedTime = $wpdb->get_var($query);
 
-             
-            if($savedEmailsCountWithSameModifiedTime > 5){
-                $newEmails = getNewEmails($account_id, $folder_id, 'confliction');
 
+            if ($savedEmailsCountWithSameModifiedTime > 5) {
+                $newEmails = getNewEmails($account_id, $folder_id, 'confliction');
             }
         }
     }
-    
-    
+
     if (isset($newEmails['error']['code'])) {
         handle_auth_error($newEmails['error']['code']);
     }
@@ -124,7 +122,7 @@ function syncEmails()
     array_walk($newEmails, function ($email) use ($account_id) {
         saveNewEmail($account_id, $email);
     });
-    
+
     wp_send_json_success([
         'message' => count($newEmails) . ' emails synced successfully',
         'count' => count($newEmails)
@@ -161,12 +159,15 @@ function associateEmailAdditionalInformation()
 
     global $wpdb;
     $table_name = MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE;
+    $reference = 'unkown';
 
     if ($column == 'category_id') {
+        $reference = 'category';
         $table_name = MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE;
         $email_assigned_category_exists = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE email_id = %d AND $column = %s", $email_id, $value));
 
         if ($email_assigned_category_exists) {
+            $logStatus = 'unassigned';
             $wpdb->delete(
                 $table_name,
                 [
@@ -177,6 +178,8 @@ function associateEmailAdditionalInformation()
             );
             $status = 'deleted';
         } else {
+            $logStatus = 'assigned';
+
             $wpdb->insert(
                 $table_name,
                 [
@@ -188,8 +191,23 @@ function associateEmailAdditionalInformation()
             $status = 'inserted';
         }
 
+        $userName = wp_get_current_user()->user_nicename;
+        $categoryName = $wpdb->get_var($wpdb->prepare("SELECT name FROM " . MAIL_INBOX_CATEGORIES_TABLE . " WHERE id = %d", $value));
+
+        $message = $userName . ' ' . $logStatus . ' ' . $reference . ' ' . $categoryName;
+
+        $created = createEmailLog([
+            'email_id'      => $email_id,
+            'user_id'       => get_current_user_id(),
+            'reference'     => $reference,
+            'status'        => $logStatus,
+            'reference_id'  => $value,
+            'message'       => $message
+        ]);
+
         wp_send_json_success([
             'message' => 'Email additional information saved successfully!',
+            'log' => $created,
             'status' => $status
         ]);
     }
@@ -221,6 +239,11 @@ function associateEmailAdditionalInformation()
         }
 
         $status = 'updated';
+        if(!$value || $value==0 || $value=='null'){
+            $logStatus = 'unassigned';
+        } else {
+            $logStatus = 'changed';
+        }
     } else {
         // Insert a new record if the email_id does not exist
         $wpdb->insert(
@@ -233,10 +256,63 @@ function associateEmailAdditionalInformation()
         );
 
         $status = 'inserted';
+        $logStatus = 'assigned';
     }
+
+    $mapping = [
+        'agent_id' => 'agent',
+        'tag_id' => 'tag',
+    ];
+
+    $reference = $mapping[$column] ?? null;
+
+    $userName = wp_get_current_user()->user_nicename;
+
+    $mapping = [
+        'agent_id' => 'agent',
+        'tag_id' => 'tag',
+    ];
+    
+    $asssignedName = 'unkown';
+    if($column=='agent_id'){
+        $user = get_userdata($value);
+        $asssignedName = $user->display_name;
+    } else if($column=='tag_id'){
+        $asssignedName = $wpdb->get_var($wpdb->prepare("SELECT name FROM " . MAIL_INBOX_TAGS_TABLE . " WHERE id = %d", $value));
+    }
+
+    $message = $userName . ' ' . $logStatus . ' ' . $reference . ' ' . $asssignedName;
+
+    $created_log = createEmailLog([
+        'email_id'      => $email_id,
+        'user_id'       => get_current_user_id(),
+        'reference'     => $reference,
+        'status'        => $logStatus,
+        'reference_id'  => $value,
+        'message'       => $message
+    ]);
 
     wp_send_json_success([
         'message' => 'Email additional information saved successfully!',
+        'log' => $created_log,
         'status' => $status
     ]);
+}
+
+
+function createEmailLog($data)
+{
+    global $wpdb;
+    $isLogSaved = $wpdb->insert(
+        MAIL_INBOX_LOGS_TABLE,
+        $data
+    );
+
+    if (!$isLogSaved) {
+        return ['success' => false, 'message' => $wpdb->last_error];
+    }
+
+    $lastInsertedId = $wpdb->insert_id;
+
+    return $wpdb->get_row($wpdb->prepare("SELECT * FROM " . MAIL_INBOX_LOGS_TABLE . " WHERE id = %d", $lastInsertedId));
 }

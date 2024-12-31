@@ -1,5 +1,6 @@
 <?php
-function associateEmailAdditionalInfo($emailId, $column, $value) {
+function associateEmailAdditionalInfo($emailId, $column, $value)
+{
     global $wpdb;
     $table_name = MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE;
 
@@ -49,13 +50,23 @@ add_action('graphql_register_types', function () {
         ],
     ]);
 
-     // Register Category type
-     register_graphql_object_type('Category', [
+    // Register Category type
+    register_graphql_object_type('Category', [
         'description' => __('A category associated with an email', 'your-text-domain'),
         'fields' => [
             'id' => ['type' => 'ID', 'description' => __('The ID of the category', 'your-text-domain')],
             'name' => ['type' => 'String', 'description' => __('The name of the category', 'your-text-domain')],
         ],
+    ]);
+
+    // Register Category type
+    register_graphql_object_type('Logs', [
+        'description' => __('Logs associated with an email', 'your-text-domain'),
+        'fields' => [
+            'id' => ['type' => 'ID', 'description' => __('The ID of the log', 'your-text-domain')],
+            'message' => ['type' => 'String', 'description' => __('Message of the log', 'your-text-domain')],
+            'created_at' => ['type' => 'String', 'description' => __('Time of the created log', 'your-text-domain')],
+        ]
     ]);
 
     // Register Attachment type
@@ -139,8 +150,8 @@ add_action('graphql_register_types', function () {
         }
     ]);
 
-     // Register UserInfo type for user details
-     register_graphql_object_type('UserInfo', [
+    // Register UserInfo type for user details
+    register_graphql_object_type('UserInfo', [
         'description' => __('Information about the user associated with an email', 'your-text-domain'),
         'fields' => [
             'id' => ['type' => 'ID', 'description' => __('The ID of the user', 'your-text-domain')],
@@ -149,7 +160,7 @@ add_action('graphql_register_types', function () {
             'role' => ['type' => 'String', 'description' => __('The role of the user', 'your-text-domain')],
         ],
     ]);
-    
+
 
     // Extend Email type with user_info field
     register_graphql_field('Email', 'user_info', [
@@ -160,14 +171,14 @@ add_action('graphql_register_types', function () {
             $table_name = MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE;
 
             $associated_user = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM $table_name WHERE email_id = %d", $email->id));
-            if($associated_user->user_id){
+            if ($associated_user->user_id) {
                 $user = get_userdata($associated_user->user_id);
             } else {
                 $email = json_decode($email->sender)->emailAddress->address;
-                $user = get_user_by('email', $email);    
+                $user = get_user_by('email', $email);
             }
 
-            if(!isset($user->data)){
+            if (!isset($user->data)) {
                 return null;
             }
 
@@ -181,8 +192,8 @@ add_action('graphql_register_types', function () {
         }
     ]);
 
-     // Register Order type
-     register_graphql_object_type('Order', [
+    // Register Order type
+    register_graphql_object_type('Order', [
         'description' => __('An order placed by a user', 'your-text-domain'),
         'fields' => [
             'id' => ['type' => 'ID', 'description' => __('The ID of the order', 'your-text-domain')],
@@ -212,8 +223,8 @@ add_action('graphql_register_types', function () {
         ],
     ]);
 
-     // Extend Email type with tickets field
-     register_graphql_field('Email', 'tickets', [
+    // Extend Email type with tickets field
+    register_graphql_field('Email', 'tickets', [
         'type' => ['list_of' => 'AwesomeSupportTicket'],
         'description' => __('Awesome Support tickets associated with the user of this email', 'your-text-domain'),
         'resolve' => function ($email, $args, $context, $info) {
@@ -226,13 +237,13 @@ add_action('graphql_register_types', function () {
             // If no user ID is associated, return an empty array
             if (empty($associated_user->user_id)) {
                 $email = json_decode($email->sender)->emailAddress->address;
-                $user = get_user_by('email', $email);    
-                if(!isset($user->data)){
+                $user = get_user_by('email', $email);
+                if (!isset($user->data)) {
                     return [];
                 }
 
                 $associatedUserId = $user->data->ID;
-            } else{
+            } else {
                 $associatedUserId = $associated_user->user_id;
             }
 
@@ -287,7 +298,7 @@ add_action('graphql_register_types', function () {
                 return [];
             }
 
-            if($associated_user->user_id && get_userdata($associated_user->user_id)->data){
+            if ($associated_user->user_id && get_userdata($associated_user->user_id)->data) {
                 $userEmail = get_userdata($associated_user->user_id)->data->user_email;
             } else {
                 $userEmail = json_decode($email->sender)->emailAddress->address;
@@ -301,7 +312,7 @@ add_action('graphql_register_types', function () {
                 'limit'         => 5,     // Get all matching orders
                 'status'        => 'any',  // Retrieve orders of any status
             );
-                        
+
             $orders = wc_get_orders($args);
             if (empty($orders)) {
                 return [];
@@ -378,7 +389,7 @@ add_action('graphql_register_types', function () {
 
                     $prepared_query = $wpdb->prepare($query, intval($email->id));
                     $additional_info = $wpdb->get_row($prepared_query);
-                    
+
                     $ticketTitle = '';
                     if (get_post_type($additional_info->ticket_id) === 'ticket') {
                         $ticketTitle = get_the_title($additional_info->ticket_id);
@@ -390,12 +401,12 @@ add_action('graphql_register_types', function () {
                             $order = wc_get_order($additional_info->order_id);
                             if ($order) {
                                 $orderTitle = $order->get_order_number();
-                            } 
+                            }
                         }
                     }
 
                     $defaultTicketAssignee = null;
-                    if(!$additional_info->agent_id){
+                    if (!$additional_info->agent_id) {
                         // Query the associated user ID from the additional info table
                         $table_name = MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE;
                         $associated_user = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM $table_name WHERE email_id = %d", $email->id));
@@ -403,13 +414,13 @@ add_action('graphql_register_types', function () {
                         // If no user ID is associated, return an empty array
                         if (empty($associated_user->user_id)) {
                             $email = json_decode($email->sender)->emailAddress->address;
-                            $user = get_user_by('email', $email);    
-                            if(isset($user->data)){
+                            $user = get_user_by('email', $email);
+                            if (isset($user->data)) {
                                 $associatedUserId = $user->data->ID;
 
                                 associateEmailAdditionalInfo($emailId, 'user_id', $associatedUserId);
                             }
-                        } else{
+                        } else {
                             $associatedUserId = $associated_user->user_id;
                         }
 
@@ -425,7 +436,7 @@ add_action('graphql_register_types', function () {
                         ", $associatedUserId);
 
                         $ticket = $wpdb->get_row($tickets_query);
-                        if($ticket){
+                        if ($ticket) {
                             $defaultTicketAssignee = get_post_meta($ticket->id, '_wpas_assignee', true);
                             associateEmailAdditionalInfo($emailId, 'agent_id', $defaultTicketAssignee);
                         }
@@ -462,6 +473,16 @@ add_action('graphql_register_types', function () {
                     return $wpdb->get_results($prepared_query);
                 },
             ],
+            'logs' => [
+                'type' => ['list_of' => 'Logs'],
+                'description' => __('Logs associated with the email', 'your-text-domain'),
+                'resolve' => function ($email, $args, $context, $info) {
+                    global $wpdb;
+                    $query = "SELECT * FROM " . MAIL_INBOX_LOGS_TABLE . " WHERE email_id = %d ORDER BY id DESC";
+                    $prepared_query = $wpdb->prepare($query, intval($email->id));
+                    return $wpdb->get_results($prepared_query);
+                },
+            ],
             'attachments' => [
                 'type' => ['list_of' => 'Attachment'],
                 'description' => __('Attachments associated with the email', 'your-text-domain'),
@@ -488,8 +509,8 @@ add_action('graphql_register_types', function () {
                     ";
                     $prepared_query = $wpdb->prepare($query, intval($email->id));
                     $orderId = $wpdb->get_row($prepared_query)->order_id;
-                    if(!$orderId){
-                        return '';   
+                    if (!$orderId) {
+                        return '';
                     }
 
                     return admin_url('post.php?post=' . $orderId . '&action=edit');
@@ -507,8 +528,8 @@ add_action('graphql_register_types', function () {
                     ";
                     $prepared_query = $wpdb->prepare($query, intval($email->id));
                     $ticketId = $wpdb->get_row($prepared_query)->ticket_id;
-                    if(!$ticketId){
-                        return '';   
+                    if (!$ticketId) {
+                        return '';
                     }
 
                     return admin_url('post.php?post=' . $ticketId . '&action=edit');
@@ -542,54 +563,54 @@ add_action('graphql_register_types', function () {
         ],
         'resolve' => function ($source, $args, $context, $info) {
             global $wpdb;
-    
+
             if (empty($args['folder_id'])) {
                 return null; // No folder_id provided
             }
-    
+
             $limit = isset($args['limit']) ? absint($args['limit']) : 10;
             $offset = isset($args['offset']) ? absint($args['offset']) : 0;
             $folder_id = intval($args['folder_id']);
-    
+
             // Start constructing the query with the main table
             $query = "SELECT e.* FROM " . MAIL_INBOX_EMAILS_TABLE . " AS e";
-    
+
             // Initialize WHERE conditions and parameters
             $conditions = [];
             $query_params = [];
-    
+
             // Initial WHERE clause for folder_id filter
             $conditions[] = "e.folder_id = %d";
             $query_params[] = $folder_id;
-    
+
             // Apply filters if provided
             if (!empty($args['filters'])) {
                 $filters = $args['filters'];
-                
+
                 // Date range filter
                 if (!empty($filters['startDate'][0]) && !empty($filters['endDate'][0])) {
                     $startOfDayUTC = gmdate('Y-m-d H:i:s', strtotime($filters['startDate'][0] . ' 00:00:00') - (5.5 * 3600));
                     $endOfDayUTC = gmdate('Y-m-d H:i:s', strtotime($filters['endDate'][0] . ' 23:59:59') - (5.5 * 3600));
-                
+
                     $conditions[] = "e.received_datetime BETWEEN %s AND %s";
                     $query_params[] = $startOfDayUTC;
                     $query_params[] = $endOfDayUTC;
                 } elseif (!empty($filters['startDate'][0])) {
                     $startOfDayUTC = gmdate('Y-m-d H:i:s', strtotime($filters['startDate'][0] . ' 00:00:00') - (5.5 * 3600));
                     $endOfDayUTC = gmdate('Y-m-d H:i:s', strtotime($filters['startDate'][0] . ' 23:59:59') - (5.5 * 3600));
-                
+
                     $conditions[] = "e.received_datetime BETWEEN %s AND %s";
                     $query_params[] = $startOfDayUTC;
                     $query_params[] = $endOfDayUTC;
                 } elseif (!empty($filters['endDate'][0])) {
                     $startOfDayUTC = gmdate('Y-m-d H:i:s', strtotime($filters['endDate'][0] . ' 00:00:00') - (5.5 * 3600));
                     $endOfDayUTC = gmdate('Y-m-d H:i:s', strtotime($filters['endDate'][0] . ' 23:59:59') - (5.5 * 3600));
-                
+
                     $conditions[] = "e.received_datetime BETWEEN %s AND %s";
                     $query_params[] = $startOfDayUTC;
                     $query_params[] = $endOfDayUTC;
                 }
-    
+
                 // Search by From filter
                 if (!empty($filters['searchFrom'])) {
                     $searchFrom = '%' . $wpdb->esc_like($filters['searchFrom']) . '%';
@@ -598,25 +619,25 @@ add_action('graphql_register_types', function () {
                     $query_params[] = $searchFrom;
                     $query_params[] = $searchFrom;
                 }
-    
+
                 // Search by Subject filter
                 if (!empty($filters['searchSubject'])) {
                     $searchSubject = '%' . $wpdb->esc_like(trim($args['filters']['searchSubject'])) . '%';
                     $conditions[] = "e.subject LIKE %s";
                     $query_params[] = $searchSubject;
                 }
-    
+
                 // Keyword filter
                 if (!empty($filters['keyword'])) {
                     $keyword = '%' . $wpdb->esc_like(wp_strip_all_tags(trim($filters['keyword']))) . '%';
                     $conditions[] = "e.body_content LIKE %s";
                     $query_params[] = $keyword;
                 }
-    
+
                 // Agent ID filter
                 if (!empty($filters['agentId'])) {
                     $agentId = $filters['agentId'];
-    
+
                     if ($agentId > 0) {
                         $conditions[] = "EXISTS (
                             SELECT 1 FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE . " ai
@@ -631,7 +652,7 @@ add_action('graphql_register_types', function () {
                         )";
                     }
                 }
-    
+
                 // Tags filter
                 if (!empty($filters['tags'])) {
                     $tagFilter = $filters['tags'];
@@ -649,11 +670,11 @@ add_action('graphql_register_types', function () {
                         )";
                     }
                 }
-    
+
                 // Categories filter
                 if (!empty($filters['categories'])) {
                     $categoryFilter = $filters['categories'];
-    
+
                     if ($categoryFilter == 'With Categories') {
                         // Only get records with a category
                         $conditions[] = "EXISTS (
@@ -666,7 +687,7 @@ add_action('graphql_register_types', function () {
                             SELECT 1 FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE . " em
                             WHERE em.email_id = e.id AND em.category_id IS NOT NULL AND em.category_id > 0
                         )";
-                    } else if($categoryFilter && $categoryFilter != 'null'){
+                    } else if ($categoryFilter && $categoryFilter != 'null') {
                         $categoryIds = implode(',', array_map('intval', explode(',', $categoryFilter))); // Sanitize category IDs
                         $conditions[] = "EXISTS (
                             SELECT 1 FROM " . MAIL_INBOX_EMAILS_ADDITIONAL_MULTIPLE_INFO_TABLE . " em
@@ -675,22 +696,22 @@ add_action('graphql_register_types', function () {
                     }
                 }
             }
-    
+
             // Assemble the WHERE clause
             if (!empty($conditions)) {
                 $query .= " WHERE " . implode(" AND ", $conditions);
             }
-    
+
             // Add ORDER BY and LIMIT/OFFSET
             $query .= " ORDER BY e.id DESC LIMIT %d OFFSET %d";
             $query_params[] = $limit;
             $query_params[] = $offset;
-    
+
             // Prepare and execute the query
             $prepared_query = $wpdb->prepare($query, $query_params);
 
             $emails = $wpdb->get_results($prepared_query);
             return $emails;
         },
-    ]);    
+    ]);
 });

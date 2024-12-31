@@ -57,11 +57,11 @@ document.addEventListener("DOMContentLoaded", function () {
             categoriesWithStaticOptions() {
                 // Check if a specific ID is selected
                 if (this.filters.categories && this.filters.categories.length > 0) {
-                    if(this.filters.categories.some(item => item.id === 'With Categories')){
+                    if (this.filters.categories.some(item => item.id === 'With Categories')) {
                         return [{ id: 'With Categories', name: 'With Categories' }];
                     }
-                    
-                    if(this.filters.categories.some(item => item.id === 'Without Categories')){
+
+                    if (this.filters.categories.some(item => item.id === 'Without Categories')) {
                         return [{ id: 'Without Categories', name: 'Without Categories' }];
                     }
 
@@ -203,6 +203,11 @@ document.addEventListener("DOMContentLoaded", function () {
                                 name
                                 path
                             }
+                            logs{
+                                id
+                                message
+                                created_at
+                            }
                         }
                     }`;
 
@@ -323,6 +328,11 @@ document.addEventListener("DOMContentLoaded", function () {
             handleLoadingText(message) {
                 this.loadingText = message;
             },
+            handleLog(emailId, log){
+                if(this.activeEmail.id === emailId){
+                    this.activeEmail.logs.unshift(log);
+                }
+            },
             onDateChange(newDateRange) {
                 const formatDate = (date) => {
                     if (!date) return null;
@@ -346,7 +356,7 @@ document.addEventListener("DOMContentLoaded", function () {
             clearCategoriesSelection() {
                 this.filters.categories = null;
             },
-            syncingFolder(folder){
+            syncingFolder(folder) {
                 this.activeSyncingFolder = folder;
             }
         },
@@ -546,7 +556,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                     @view-email="viewEmail"
                                     @updateReadStatus="updateReadStatus"
                                     @view-email-if-preview-opened="viewEmailIfPreviewOpened"
-                                    @loadingText="handleLoadingText">
+                                    @loadingText="handleLoadingText"
+                                    @create-log="handleLog">
                                 </mail-list>
                             </v-col>
 
