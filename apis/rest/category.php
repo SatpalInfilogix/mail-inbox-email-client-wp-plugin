@@ -1,8 +1,8 @@
 <?php
-add_action('wp_ajax_create_category', 'createCategory');
-add_action('wp_ajax_update_category', 'updateCategory');
+add_action('wp_ajax_mail_inbox_create_category', 'mailInboxCreateCategory');
+add_action('wp_ajax_mail_inbox_update_category', 'mailInboxUpdateCategory');
 
-function createCategory(){
+function mailInboxCreateCategory(){
     global $wpdb;
     $name = sanitize_text_field($_POST['name']);
     $font_color = sanitize_hex_color($_POST['font_color']);
@@ -37,7 +37,7 @@ function createCategory(){
     }
 }
 
-function updateCategory() {
+function mailInboxUpdateCategory() {
     global $wpdb;
     $id = intval($_POST['id']);
     $name = sanitize_text_field($_POST['name']);

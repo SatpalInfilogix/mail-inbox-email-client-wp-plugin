@@ -25,7 +25,7 @@ export default {
 
             if (valid){
                 const formdata = new FormData();
-                formdata.append("action", "create_tag");
+                formdata.append("action", "mail_inbox_create_tag");
                 formdata.append("name", this.newTag.name);
                 formdata.append("font_color", this.newTag.font_color);
                 formdata.append("background_color", this.newTag.background_color);

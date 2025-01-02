@@ -1,8 +1,8 @@
 <?php
-add_action('wp_ajax_create_tag', 'createTag');
-add_action('wp_ajax_update_tag', 'updateTag');
+add_action('wp_ajax_mail_inbox_create_tag', 'mailInboxCreateTag');
+add_action('wp_ajax_mail_inbox_update_tag', 'mailInboxUpdateTag');
 
-function createTag(){
+function mailInboxCreateTag(){
     global $wpdb;
     $name = sanitize_text_field($_POST['name']);
     $font_color = sanitize_hex_color($_POST['font_color']);
@@ -37,7 +37,7 @@ function createTag(){
     }
 }
 
-function updateTag() {
+function mailInboxUpdateTag() {
     global $wpdb;
     $id = intval($_POST['id']);
     $name = sanitize_text_field($_POST['name']);

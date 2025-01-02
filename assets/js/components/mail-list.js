@@ -1,12 +1,14 @@
 import AssignTagDialog from './tag/assign-tag-dialog.js';
 import AssignAgentDialog from './agent/assign-agent-dialog.js';
+import CreateOrderDialog from './orders/create-order-dialog.js';
 
 export default {
     name: 'MailList',
     components: {
         AssignTagDialog,
         AssignAgentDialog,
-        VueDatePicker
+        VueDatePicker,
+        CreateOrderDialog
     },
     props: {
         activeAccount: {
@@ -54,6 +56,7 @@ export default {
             selectedEmailId: 0,
             tags: [],
             isAddTagDialogOpen: false,
+            isAddOrderDialogOpen: false,
             isAssignAgentDialogOpen: false,
             showUnAssignTagModal: false,
             showUnAssignAgentModal: false,
@@ -74,7 +77,9 @@ export default {
             emailCounts: {},
             selectedCountDate: new Date(),
             loadingEmailCounts: true,
-            selectedCountsFilterAgent: null
+            selectedCountsFilterAgent: null,
+            products: [],
+            pendingActionDetails: null
         };
     },
     computed: {
@@ -83,7 +88,7 @@ export default {
         },
         isAwesomeSupportInstalled() {
             return window.mailInbox.isAwesomeSupportInstalled;
-        },
+        }
     },
     methods: {
         generateHeaders() {
@@ -211,7 +216,7 @@ export default {
                 this.loading = false;
                 this.allLoaded = false;
             }
-            
+
             if (this.loading || this.allLoaded || !this.activeFolder) return;
 
             this.loading = true;
@@ -298,7 +303,7 @@ export default {
 
                 if (apiResponse.data.getEmailsByFolderId) {
                     this.loading = false;
-                    
+
                     const newEmails = apiResponse.data.getEmailsByFolderId.map(email => {
                         // Ensure additionalInfo exists with necessary structure
                         email.additionalInfo = email.additionalInfo || {};
@@ -420,9 +425,22 @@ export default {
 
             return await response.json();
         },
+        async handleOrderSuccess(response){
+            this.isAddOrderDialogOpen = false;
+            await this.handleEmailCategories(this.pendingActionDetails.emailId, this.pendingActionDetails.categoryId, '');
+            await this.handleEmailUser(this.pendingActionDetails.emailId, response.userId);
+
+            const email = this.loadedMails.find(mail => mail.id === this.pendingActionDetails.emailId);
+            email.order = {
+                id: response.orderId,
+                order_number: response.orderNumber,
+            };
+            email.orderLink = this.editPostLink(response.orderId);
+
+        },
         async handleEmailTag(emailId, tagId) {
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'tag_id', tagId);
-           
+
             if (apiResponse.success) {
                 if (tagId) {
                     this.showSnackbar(`Tag successfully assigned!`, 'success');
@@ -430,9 +448,9 @@ export default {
                     this.showSnackbar(`Tag unassigned successfully!`, 'success');
                 }
 
-                if(apiResponse.data.log){
+                if (apiResponse.data.log) {
                     this.$emit('createLog', emailId, apiResponse.data.log)
-                }    
+                }
 
                 // Update the local email data to reflect the new tag
                 const email = this.loadedMails.find(mail => mail.id === emailId);
@@ -461,9 +479,9 @@ export default {
                     this.showSnackbar(`Agent unassigned successfully!`, 'success');
                 }
 
-                if(apiResponse.data.log){
+                if (apiResponse.data.log) {
                     this.$emit('createLog', emailId, apiResponse.data.log)
-                } 
+                }
 
                 // Update the local email data to reflect the new tag
                 const email = this.loadedMails.find(mail => mail.id === emailId);
@@ -501,7 +519,7 @@ export default {
                     }
                   `,
                     variables: {
-                        userId: userId,
+                        userId: Number(userId),
                     },
                 }),
             });
@@ -550,14 +568,26 @@ export default {
                 this.showSnackbar(`Failed to assign agent`, 'error');
             }
         },
-        async handleEmailCategories(emailId, categoryId) {
+        async handleEmailCategories(emailId, categoryId, categoryName = '') {
+            if (categoryName && categoryName.toLowerCase() === "new order") {
+                this.isAddOrderDialogOpen = true;
+
+                let defaultUserId = this.loadedMails.find(email => email.id === emailId).userInfo?.id || null;
+
+                this.pendingActionDetails = {
+                    emailId,
+                    categoryId,
+                    defaultUserId
+                }
+                return;
+            }
+
             const apiResponse = await this.associateEmailAdditionalInformation(emailId, 'category_id', categoryId);
             if (apiResponse.success) {
-
-                if(apiResponse.data.log){
+                if (apiResponse.data.log) {
                     this.$emit('createLog', emailId, apiResponse.data.log)
-                } 
-                
+                }
+
                 this.showSnackbar(`Category successfully assigned!`, 'success');
             } else {
                 this.showSnackbar(`Failed to assign category`, 'error');
@@ -598,13 +628,12 @@ export default {
             this.searchingUsers = true;
             const graphqlQuery = `
                 query SearchUsers($search: String!) {
-                    users(where: { search: $search }, first: 10) {
-                        nodes {
-                            id
-                            userId
-                            name
-                            email
-                        }
+                    mailInboxUsers(where: { search: $search }, first: 10) {
+                        id
+                        userId
+                        name
+                        email
+                        phoneNumber
                     }
                 }
             `;
@@ -620,16 +649,38 @@ export default {
                 });
 
                 const result = await response.json();
-
                 if (item) {
-                    item.users = result.data.users.nodes || [];
+                    item.users = result.data.mailInboxUsers || [];
                 } else {
-                    this.users = result.data.users.nodes || [];
+                    this.users = result.data.mailInboxUsers || [];
                 }
             } catch (error) {
                 console.error('Error fetching users:', error);
             } finally {
                 this.searchingUsers = false;
+            }
+        },
+        async fetchProducts() {
+            const graphqlQuery = `
+                query GetAllProducts {
+                    mailInboxAllProducts {
+                        id
+                        name
+                    }
+                }
+            `;
+
+            const response = await fetch(`${window.mailInbox.siteUrl}/graphql`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query: graphqlQuery }),
+            });
+
+            const products = await response.json();
+            if(products?.data?.mailInboxAllProducts){
+                this.products = products?.data?.mailInboxAllProducts;
             }
         },
         async handleOrderChange(emailId, orderId) {
@@ -656,13 +707,13 @@ export default {
         },
         handleScroll(event) {
             const { scrollTop, scrollHeight, clientHeight } = event.target;
-        
+
             // Calculate the total scrollable height
             const totalScrollableHeight = scrollHeight - clientHeight;
-        
+
             // Calculate the scroll position as a percentage
             const scrollPercentage = scrollTop / totalScrollableHeight;
-        
+
             // Load more emails when the user has scrolled past 50% of the content
             if (scrollPercentage >= 0.5) {
                 const newOffset = this.loadedMails.length;
@@ -686,7 +737,7 @@ export default {
         },
         onCheckboxChange(email) {
             if (!email.selected) {
-                this.selectAll = false; // Uncheck the header checkbox if any email is unchecked
+                this.selectAll = false;
             }
         },
         openAssignAgentDialog(item) {
@@ -733,7 +784,7 @@ export default {
         },
         updatedEmailsCount: {
             handler() {
-                if(this.activeSyncingFolder.local_folder_id === this.activeFolder.id){
+                if (this.activeSyncingFolder.local_folder_id === this.activeFolder.id) {
                     this.loadEmails();
                 }
             },
@@ -750,6 +801,7 @@ export default {
     async mounted() {
         await this.fetchTags();
         await this.fetchUsers('');
+        await this.fetchProducts();
         this.$nextTick(() => {
             const dataTable = this.$refs.mailDataTable;
             if (dataTable) {
@@ -959,11 +1011,11 @@ export default {
                             multiple
                         >
                             <template v-slot:item="{ props, item: categoryItem }">
-                                <v-list-item v-bind="props" @click="handleEmailCategories(item.id, categoryItem.value)"></v-list-item>
+                                <v-list-item v-bind="props" @click="handleEmailCategories(item.id, categoryItem.value, categoryItem.title)"></v-list-item>
                             </template>
-                            <template v-slot:selection="{ item, index }">
+                            <template v-slot:selection="{ item: categoryItem, index }">
                                 <v-chip v-if="index < 2">
-                                    <span>{{ item.title }}</span>
+                                    <span>{{ item.categories[index].name }}</span>
                                 </v-chip>
                                 <span
                                     v-if="index === 2"
@@ -1102,6 +1154,8 @@ export default {
         @close="closeAddTagDialog"
         @error="showSnackbar"
     ></AssignTagDialog>
+
+    <CreateOrderDialog :pendingActionDetails="pendingActionDetails" :agents="agents" @orderCreatedSuccess="handleOrderSuccess" @close="isAddOrderDialogOpen = false" :users="users" :products="products" :visible="isAddOrderDialogOpen"></CreateOrderDialog>
 
     <AssignAgentDialog
         :visible="isAssignAgentDialogOpen"

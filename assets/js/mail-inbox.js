@@ -329,7 +329,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 this.loadingText = message;
             },
             handleLog(emailId, log){
-                if(this.activeEmail.id === emailId){
+                if(this.activeEmail && this.activeEmail.id === emailId){
                     this.activeEmail.logs.unshift(log);
                 }
             },

@@ -25,7 +25,7 @@ export default {
 
             if (valid){
                 const formdata = new FormData();
-                formdata.append("action", "create_category");
+                formdata.append("action", "mail_inbox_create_category");
                 formdata.append("name", this.newCategory.name);
                 formdata.append("font_color", this.newCategory.font_color);
                 formdata.append("background_color", this.newCategory.background_color);

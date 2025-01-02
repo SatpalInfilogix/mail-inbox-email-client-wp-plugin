@@ -32,7 +32,7 @@ export default {
 
             if (valid){
                 const formdata = new FormData();
-                formdata.append("action", "update_category");
+                formdata.append("action", "mail_inbox_update_category");
                 formdata.append("id", this.category.id);
                 formdata.append("name", this.editCategory.name);
                 formdata.append("font_color", this.editCategory.font_color);

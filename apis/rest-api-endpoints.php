@@ -5,6 +5,7 @@ include plugin_dir_path(__FILE__) . 'rest/category.php';
 include plugin_dir_path(__FILE__) . 'rest/tag.php';
 include plugin_dir_path(__FILE__) . 'rest/rule.php';
 include plugin_dir_path(__FILE__) . 'rest/email.php';
+include plugin_dir_path(__FILE__) . 'rest/orders.php';
 
 add_action('wp_ajax_get_account_auth_url', 'accountAuthUrl');
 add_action('wp_ajax_sync_email_folders', 'syncEmailFolders');
@@ -159,7 +160,7 @@ function associateEmailAdditionalInformation()
 
     global $wpdb;
     $table_name = MAIL_INBOX_EMAILS_ADDITIONAL_INFO_TABLE;
-    $reference = 'unkown';
+    $reference = 'unknown';
 
     if ($column == 'category_id') {
         $reference = 'category';

@@ -3,12 +3,15 @@ add_action( 'graphql_register_types', function() {
     register_graphql_field( 'RootQuery', 'mailInboxAgents', [
         'type' => ['list_of' => 'User'],
         'resolve' => function( $root, $args, $context, $info ) {
-            $agentRole = get_option('mail_inbox_agent_role', '');
+            $agentRole = get_option('mail_inbox_agent_role', []);
+            if ( !is_array($agentRole) ) {
+                $agentRole = explode(',', $agentRole);
+            }
 
             // Query all users without filtering by role
             $user_query = new WP_User_Query([
-                'role'   => $agentRole,
-                'fields' => 'all_with_meta', // Ensure all user fields are fetched
+                'role__in'   => $agentRole,
+                'fields' => ['ID', 'display_name', 'user_email'],
             ]);
 
             // Fetch the results

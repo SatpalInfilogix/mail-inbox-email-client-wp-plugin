@@ -12,12 +12,14 @@ function settings() {
         $client_id = sanitize_text_field($_POST['mail_client_id']);
         $client_secret = sanitize_text_field($_POST['mail_client_secret']);
         $agent_role = sanitize_text_field($_POST['mail_agent_role']);
+        $orderDescriptionField = sanitize_text_field($_POST['mail_order_description_acf_field']);
         $auto_refresh = isset($_POST['auto_refresh']) ? 'on' : 'off';
         $auto_refresh_seconds = sanitize_text_field($_POST['auto_refresh_seconds']);
 
         update_option('mail_inbox_client_id', mail_inbox_encrypt($client_id));
         update_option('mail_inbox_client_secret', mail_inbox_encrypt($client_secret));
         update_option('mail_inbox_agent_role', $agent_role);
+        update_option('mail_inbox_order_description_acf_field', $orderDescriptionField);
         update_option('mail_inbox_auto_refresh', $auto_refresh);
         update_option('mail_inbox_auto_refresh_seconds', $auto_refresh_seconds);
 
@@ -58,6 +60,7 @@ function settings() {
     $client_id_encrypted = get_option('mail_inbox_client_id', '');
     $client_secret_encrypted = get_option('mail_inbox_client_secret', '');
     $agent_role = get_option('mail_inbox_agent_role', '');
+    $order_description_field_name = get_option('mail_inbox_order_description_acf_field', '');
     $auto_refresh = get_option('mail_inbox_auto_refresh', 'off');
     $auto_refresh_seconds = get_option('mail_inbox_auto_refresh_seconds', '');
 
@@ -98,6 +101,10 @@ function settings() {
                             ?>
                         </select>
                     </td>
+                </tr>
+                <tr valign="top">
+                    <th scope="row"><label for="mail_order_description_acf_field">ACF Order Description Field Name</label></th>
+                    <td><input type="text" name="mail_order_description_acf_field" id="mail_order_description_acf_field" value="<?php echo esc_attr($order_description_field_name); ?>" class="regular-text" /></td>
                 </tr>
                 <tr valign="top">
                     <th scope="row"><label for="auto_refresh">Auto refresh</label></th>

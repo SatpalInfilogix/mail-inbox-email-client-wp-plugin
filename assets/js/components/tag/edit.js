@@ -32,7 +32,7 @@ export default {
 
             if (valid){
                 const formdata = new FormData();
-                formdata.append("action", "update_tag");
+                formdata.append("action", "mail_inbox_update_tag");
                 formdata.append("id", this.tag.id);
                 formdata.append("name", this.editTag.name);
                 formdata.append("font_color", this.editTag.font_color);
