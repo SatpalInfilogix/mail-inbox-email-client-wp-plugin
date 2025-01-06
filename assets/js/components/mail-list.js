@@ -10,6 +10,7 @@ export default {
         VueDatePicker,
         CreateOrderDialog
     },
+    emits: ['viewEmail', 'updateReadStatus', 'viewEmailIfPreviewOpened', 'loadingText', 'createLog'],
     props: {
         activeAccount: {
             type: Object,
@@ -79,7 +80,8 @@ export default {
             loadingEmailCounts: true,
             selectedCountsFilterAgent: null,
             products: [],
-            pendingActionDetails: null
+            pendingActionDetails: null,
+            currentEmailData: null
         };
     },
     computed: {

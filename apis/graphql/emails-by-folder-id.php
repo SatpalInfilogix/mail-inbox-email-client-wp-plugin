@@ -27,6 +27,40 @@ function associateEmailAdditionalInfo($emailId, $column, $value)
             ['%d']
         );
     }
+
+    $mapping = [
+        'agent_id' => 'agent',
+        'tag_id' => 'tag',
+    ];
+
+    $reference = $mapping[$column] ?? null;
+
+    $userName = 'System';
+    $logStatus = 'assigned';
+
+    $mapping = [
+        'agent_id' => 'agent',
+        'tag_id' => 'tag',
+    ];
+    
+    $asssignedName = 'unkown';
+    if($column=='agent_id'){
+        $user = get_userdata($value);
+        $asssignedName = $user->display_name;
+    } else if($column=='tag_id'){
+        $asssignedName = $wpdb->get_var($wpdb->prepare("SELECT name FROM " . MAIL_INBOX_TAGS_TABLE . " WHERE id = %d", $value));
+    }
+
+    $message = $userName . ' ' . $logStatus . ' ' . $reference . ' ' . $asssignedName;
+
+    createEmailLog([
+        'email_id'      => $emailId,
+        'user_id'       => null,
+        'reference'     => $reference,
+        'status'        => $logStatus,
+        'reference_id'  => $value,
+        'message'       => $message
+    ]);
 }
 
 
@@ -473,16 +507,6 @@ add_action('graphql_register_types', function () {
                     return $wpdb->get_results($prepared_query);
                 },
             ],
-            'logs' => [
-                'type' => ['list_of' => 'Logs'],
-                'description' => __('Logs associated with the email', 'your-text-domain'),
-                'resolve' => function ($email, $args, $context, $info) {
-                    global $wpdb;
-                    $query = "SELECT * FROM " . MAIL_INBOX_LOGS_TABLE . " WHERE email_id = %d ORDER BY id DESC";
-                    $prepared_query = $wpdb->prepare($query, intval($email->id));
-                    return $wpdb->get_results($prepared_query);
-                },
-            ],
             'attachments' => [
                 'type' => ['list_of' => 'Attachment'],
                 'description' => __('Attachments associated with the email', 'your-text-domain'),
@@ -534,7 +558,17 @@ add_action('graphql_register_types', function () {
 
                     return admin_url('post.php?post=' . $ticketId . '&action=edit');
                 }
-            ]
+            ],
+            'logs' => [
+                'type' => ['list_of' => 'Logs'],
+                'description' => __('Logs associated with the email', 'your-text-domain'),
+                'resolve' => function ($email, $args, $context, $info) {
+                    global $wpdb;
+                    $query = "SELECT * FROM " . MAIL_INBOX_LOGS_TABLE . " WHERE email_id = %d ORDER BY id DESC";
+                    $prepared_query = $wpdb->prepare($query, intval($email->id));
+                    return $wpdb->get_results($prepared_query);
+                },
+            ],
         ],
     ]);
 

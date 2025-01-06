@@ -98,6 +98,26 @@ export default {
             // Set the iframe height to fit content or available space
             iframe.style.height = Math.min(contentHeight, maxIframeHeight) + 'px';
         },
+        convertToIST(dateString) {
+            const date = new Date(dateString + ' UTC');
+
+            const options = {
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+
+            const formatter = new Intl.DateTimeFormat('en-IN', options);
+            const formattedDate = formatter.format(date);
+
+            const [day, month, year, hour, minute, second] = formattedDate.split(/[\s,\/:-]+/);
+            return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+        },
     },
     watch: {
         email: {
@@ -235,7 +255,7 @@ export default {
                 <div v-if="email && email.logs.length > 0">
                     <h5 class="mb-0 font-weight-bold">Logs</h5>
                     <ul style="list-style: unset" class="pl-4">
-                        <li class="mb-0" v-for="log in visibleLogs">{{log.message}}</li>
+                        <li class="mb-0" v-for="log in visibleLogs">{{log.message}} at {{ convertToIST(log.created_at) }}</li>
                     </ul>
 
                     <button @click="toggleLogs" class="text-decoration-underline text-primary" v-if="email.logs.length > logsToShow">
