@@ -73,6 +73,7 @@ add_action('graphql_register_types', function () {
             'email_id' => ['type' => 'ID', 'description' => __('The email ID', 'your-text-domain')],
             'tag_id' => ['type' => 'ID', 'description' => __('The tag ID', 'your-text-domain')],
             'tag_name' => ['type' => 'String', 'description' => __('The name of the tag', 'your-text-domain')],
+            'tag_log' => ['type' => 'String', 'description' => __('Get log who has assigned the tag', 'your-text-domain')],
             'agent_id' => ['type' => 'ID', 'description' => __('The agent ID', 'your-text-domain')],
             'user_id' => ['type' => 'ID', 'description' => __('User associated with this email', 'your-text-domain')],
             'ticket_id' => ['type' => 'ID', 'description' => __('Ticket assigned to this email', 'your-text-domain')],
@@ -85,11 +86,12 @@ add_action('graphql_register_types', function () {
     ]);
 
     // Register Category type
-    register_graphql_object_type('Category', [
+    register_graphql_object_type('EmailListCategory', [
         'description' => __('A category associated with an email', 'your-text-domain'),
         'fields' => [
             'id' => ['type' => 'ID', 'description' => __('The ID of the category', 'your-text-domain')],
             'name' => ['type' => 'String', 'description' => __('The name of the category', 'your-text-domain')],
+            'log' => ['type' => 'String', 'description' => __('Get log of the category', 'your-text-domain')],
         ],
     ]);
 
@@ -382,7 +384,6 @@ add_action('graphql_register_types', function () {
             'account_id' => ['type' => 'ID', 'description' => __('The account ID associated with the email', 'your-text-domain')],
             'folder_id' => ['type' => 'ID', 'description' => __('The folder ID associated with the email', 'your-text-domain')],
             'email_id' => ['type' => 'String', 'description' => __('The unique email ID', 'your-text-domain')],
-            'categories' => ['type' => 'String', 'description' => __('Categories associated with the email', 'your-text-domain')],
             'has_attachments' => ['type' => 'Boolean', 'description' => __('Whether the email has attachments', 'your-text-domain')],
             'subject' => ['type' => 'String', 'description' => __('The subject of the email', 'your-text-domain')],
             'body_preview' => ['type' => 'String', 'description' => __('Preview of the email body', 'your-text-domain')],
@@ -476,11 +477,30 @@ add_action('graphql_register_types', function () {
                         }
                     }
 
+                    $tag_log = '';
+                    $logs_table = MAIL_INBOX_LOGS_TABLE;
+
+                    if($additional_info->tag_id && $additional_info->tag_name && $additional_info->email_id){
+                        $tempAssignee = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM $logs_table WHERE email_id = %d AND reference = %s ORDER BY id DESC", $additional_info->email_id, 'tag'));
+                        
+                        $assignee = 'System';
+
+                        if (!empty($tempAssignee->user_id)) {
+                            $user_info = get_user_by('id', $tempAssignee->user_id);
+                            if ($user_info) {
+                                $assignee = $user_info->display_name;
+                            }
+                        }
+
+                        $tag_log = $additional_info->tag_name.' assigned by '.$assignee;
+                    }
+
                     return [
                         'id' => $additional_info->id ?? null,
                         'email_id' => $additional_info->email_id ?? null,
                         'tag_id' => $additional_info->tag_id ?? null,
                         'tag_name' => $additional_info->tag_name ?? null,
+                        'tag_log' => $tag_log ?? null,
                         'agent_id' => $additional_info->agent_id ?? $defaultTicketAssignee,
                         'user_id' => $additional_info->user_id ?? null,
                         'ticket_id' => $additional_info->ticket_id ?? null,
@@ -493,7 +513,7 @@ add_action('graphql_register_types', function () {
                 }
             ],
             'categories' => [
-                'type' => ['list_of' => 'Category'],
+                'type' => ['list_of' => 'EmailListCategory'],
                 'description' => __('Categories associated with the email', 'your-text-domain'),
                 'resolve' => function ($email, $args, $context, $info) {
                     global $wpdb;
@@ -503,8 +523,30 @@ add_action('graphql_register_types', function () {
                         LEFT JOIN " . MAIL_INBOX_CATEGORIES_TABLE . " AS c ON em.category_id = c.id
                         WHERE em.email_id = %d
                     ";
+                    
                     $prepared_query = $wpdb->prepare($query, intval($email->id));
-                    return $wpdb->get_results($prepared_query);
+                    $categories = $wpdb->get_results($prepared_query);
+                    
+                    $logs_table = MAIL_INBOX_LOGS_TABLE;
+
+
+                    foreach ($categories as &$category) {
+                        $tempAssignee = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM $logs_table WHERE email_id = %d AND reference = %s ORDER BY id DESC", $email->id, 'category'));
+                        
+                        $assignee = 'System';
+
+                        if (!empty($tempAssignee->user_id)) {
+                            $user_info = get_user_by('id', $tempAssignee->user_id);
+                            if ($user_info) {
+                                $assignee = $user_info->display_name;
+                            }
+                        }
+    
+
+                        $category->log = $category->name. ' is assigned by '.$assignee;
+                    }
+
+                    return $categories;
                 },
             ],
             'attachments' => [

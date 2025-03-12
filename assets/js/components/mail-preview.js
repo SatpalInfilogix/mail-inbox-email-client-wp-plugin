@@ -206,7 +206,7 @@ export default {
                     <!-- Date & Time -->
                     <p class="text-body-2 my-1">
                         <span class="font-weight-bold">Date & Time:</span>
-                        {{ email.received_datetime }}
+                        {{ convertToIST(email.received_datetime) }}
                     </p>
 
                     <!-- Subject -->
@@ -215,9 +215,8 @@ export default {
                         {{ email.subject }}
                     </p>
 
-                    <div v-if="email.attachments.length > 0">
-                        <p class="text-body-2 mb-2 mt-1">
-                            <span class="font-weight-bold">Attachments:</span>
+                    <div v-if="email.attachments.length > 0" style="max-height: 160px; overflow-y: scroll">
+                        <p class="text-body-2 mb-2 mt-1"><span class="font-weight-bold">Attachments:</span></p>
                             <div v-for="attachment in email.attachments">
                                 <a :href="contentDir() + '/' + attachment.path" 
                                     target="_blank" 
@@ -243,7 +242,6 @@ export default {
                                     </v-list-item>
                                 </v-list>
                             </v-menu>
-                        </p>
                     </div>
 
                     <v-divider></v-divider>

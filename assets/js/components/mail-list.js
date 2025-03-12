@@ -265,10 +265,12 @@ export default {
                             order_title
                             ticket_id
                             ticket_title
+                            tag_log
                         }
                         categories {
                             id
                             name
+                            log
                         }
                         userInfo {
                             id,
@@ -935,7 +937,7 @@ export default {
                                     mdi-close
                                 </v-icon>
 
-                                <v-tooltip activator="parent" location="top">{{ item.additionalInfo.tag.name }}</v-tooltip>
+                                <v-tooltip activator="parent" location="top">{{ item.additionalInfo.tag_log }}</v-tooltip>
                             </v-chip>
                             <p class="text-decoration-none text-caption my-0 cursor-pointer" :class="{ 'font-weight-black' : !item.isRead }" v-else @click="openAddTagDialog(item)">Add Tag</p>
                         </div>
@@ -1019,6 +1021,9 @@ export default {
                                 <v-chip v-if="index < 2">
                                     <span>{{ item.categories[index].name }}</span>
                                 </v-chip>
+                                <v-tooltip activator="parent" location="top">{{ item.categories[index].log }}</v-tooltip>
+
+                                
                                 <span
                                     v-if="index === 2"
                                     class="text-grey text-caption align-self-center"

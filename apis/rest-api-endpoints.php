@@ -192,7 +192,7 @@ function associateEmailAdditionalInformation()
             $status = 'inserted';
         }
 
-        $userName = wp_get_current_user()->user_nicename;
+        $userName = wp_get_current_user()->display_name;
         $categoryName = $wpdb->get_var($wpdb->prepare("SELECT name FROM " . MAIL_INBOX_CATEGORIES_TABLE . " WHERE id = %d", $value));
 
         $message = $userName . ' ' . $logStatus . ' ' . $reference . ' ' . $categoryName;
@@ -267,7 +267,7 @@ function associateEmailAdditionalInformation()
 
     $reference = $mapping[$column] ?? null;
 
-    $userName = wp_get_current_user()->user_nicename;
+    $userName = wp_get_current_user()->display_name;
 
     $mapping = [
         'agent_id' => 'agent',
